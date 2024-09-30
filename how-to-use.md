@@ -8,7 +8,7 @@ WCS_API_KEY=your-weaviate-cluster-api-key
 WCS_URL=your-weaviate-cluster-url
 ```
 
-I prefer to store all environment variables in `.env` and run `pre.sh` to set them.After setting, you're ready to go. Just run `python3 bubblai.py` and enjoy!
+I prefer to store all environment variables in `.env` and run `pre.sh` to set them.After setting, you're ready to go. Just run `python3 bubbl.ai.py` and enjoy!
 
 ### HOW TO USE
 
