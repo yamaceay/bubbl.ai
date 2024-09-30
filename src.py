@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, filename="messages.log")
 
 # Environment variables for configuration
 WCS_URL = os.getenv("WCS_URL")

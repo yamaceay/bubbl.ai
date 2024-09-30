@@ -1,30 +1,38 @@
 import json
 from src import connect_weaviate_client, handle_action
-import time
 
 def bubbly_print(message, emoji="💬"):
     print(f"{emoji} {message}")
-    time.sleep(0.5)  # Add a slight delay for a more fun, conversational feel
+
+def print_menu():
+    print("\n🎈 What bubbly adventure would you like to embark on today?")
+    print("1. 💭 Blow a new Bubble (Insert a Bubble)")
+    print("2. 🔍 Explore Bubbles (Search Bubbles)")
+    print("3. 🔍 Find Like-minded Bubblers (Search Users by Similarity)")
+    print("4. 🗑️  Pop a Bubble (Remove a Bubble)")
+    print("5. 📂 Blow Bubbles from JSON (Insert Bubbles from a JSON file)")
+    print("6. 🚨 Pop ALL the Bubbles (Remove All Bubbles with Confirmation)")
+    print("7. 🚪 Exit Bubbl.ai")
+    print("\n" + "-"*40 + "\n")
 
 if __name__ == "__main__":
+    bubbly_print("🌟 Welcome to Bubbl.ai! 🌟", "✨")
+    bubbly_print("You're about to dive into the world of bubbles – your thoughts, ideas, and musings all wrapped up in one fun, floating place!", "💭")
+    print_menu()
+   
     client = connect_weaviate_client()
+    if not client:
+        bubbly_print("Oops! We couldn't connect to the server. Please try again later.", "😕")
+        exit(1)
     try:
         handle_action(client, action="create_bubble_schema")
-        
-        bubbly_print("🌟 Welcome to Bubbl.ai! 🌟", "✨")
-        bubbly_print("You're about to dive into the world of bubbles – your thoughts, ideas, and musings all wrapped up in one fun, floating place!", "💭")
 
         while True:
-            print("\n🎈 What bubbly adventure would you like to embark on today?")
-            print("1. 💭 Blow a new Bubble (Insert a Bubble)")
-            print("2. 🔍 Explore Bubbles (Search Bubbles)")
-            print("3. 🔍 Find Like-minded Bubblers (Search Users by Similarity)")
-            print("4. 🗑️  Pop a Bubble (Remove a Bubble)")
-            print("5. 📂 Blow Bubbles from JSON (Insert Bubbles from a JSON file)")
-            print("6. 🚨 Pop ALL the Bubbles (Remove All Bubbles with Confirmation)")
-            print("7. 🚪 Exit Bubbl.ai")
-
             choice = input("👉 Make your bubbly choice (1-7): ")
+            
+            if not choice.isdigit() or not 1 <= int(choice) <= 7:
+                bubbly_print("Oops! That wasn't a valid choice. Let's try again! 💫", "🤔")
+                continue
 
             if choice == "1":
                 # Insert a bubble
@@ -110,7 +118,6 @@ if __name__ == "__main__":
                 bubbly_print("Thank you for visiting Bubbl.ai! Until next time, keep your thoughts floating! ✨", "👋")
                 break
 
-            else:
-                bubbly_print("Oops! That wasn't a valid choice. Let's try again! 💫", "🤔")
+            print_menu()
     finally:
         client.close()
