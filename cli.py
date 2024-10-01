@@ -5,15 +5,85 @@ def bubbly_print(message, emoji="💬"):
     print(f"{emoji} {message}")
 
 def print_menu():
-    print("\n🎈 What bubbly adventure would you like to embark on today?")
+    print("\n🎈 What bubbly adventure would you like to embark on?")
     print("1. 💭 Blow a new Bubble (Insert a Bubble)")
     print("2. 🔍 Explore Bubbles (Search Bubbles)")
     print("3. 🔍 Find Like-minded Bubblers (Search Users by Similarity)")
     print("4. 🗑️  Pop a Bubble (Remove a Bubble)")
-    print("5. 📂 Blow Bubbles from JSON (Insert Bubbles from a JSON file)")
-    print("6. 🚨 Pop ALL the Bubbles (Remove All Bubbles with Confirmation)")
-    print("7. 🚪 Exit Bubbl.ai")
+    print("5. 👤 Enter User Profile Mode (View User Profile)")
+    print("6. 📂 Blow Bubbles from JSON (Insert Bubbles from a JSON file)")
+    print("7. 🚨 Pop ALL the Bubbles (Remove All Bubbles with Confirmation)")
+    print("8. 🚪 Exit Bubbl.ai")
     print("\n" + "-"*40 + "\n")
+def user_profile_mode(client, user_name):
+    """
+    Enter into a mode where queries can be performed on a specific user's profile without re-entering the username.
+    Allows setting and editing of filters before performing the query.
+    """
+    bubbly_print(f"You're now in the profile view mode for user: {user_name} 🧑‍💻", "👤")
+    
+    # Initialize default filters
+    query_text = ""
+    query_category = ""
+    top_k = 5
+    
+    while True:
+        # Provide options to set filters or perform the query
+        print("\nWhat would you like to do?")
+        print("1. ✍️ Edit search query text (Current: '{}')".format(query_text or "Not Set"))
+        print("2. 🏷️ Edit category filter (Current: '{}')".format(query_category or "Not Set"))
+        print("3. 🔢 Set number of results to retrieve (Current: '{}')".format(top_k))
+        print("4. 🚀 Perform the query")
+        print("5. 🚪 Exit profile mode")
+        
+        profile_choice = input("👉 Choose an option (1-5): ")
+
+        if profile_choice == "1":
+            # Edit search query text
+            query_text = input("Enter your search query text (Press ENTER to clear): ")
+            if not query_text.strip():
+                query_text = ""
+
+        elif profile_choice == "2":
+            # Edit category filter
+            query_category = input("Enter the category to filter by (Press ENTER to clear): ")
+            if not query_category.strip():
+                query_category = ""
+
+        elif profile_choice == "3":
+            # Set number of results (top_k)
+            top_k_input = input("How many recent bubbles would you like to see? (Enter a number or press ENTER to keep current value): ")
+            if top_k_input.strip().isdigit():
+                top_k = int(top_k_input)
+            else:
+                bubbly_print("Keeping the current number of results ({}).".format(top_k), "ℹ️")
+
+        elif profile_choice == "4":
+            # Perform the query with the current filters
+            bubbly_print(f"Performing query with text: '{query_text or 'None'}', category: '{query_category or 'None'}', showing top {top_k} results.", "🚀")
+            profile = handle_action(client, action="query_user_profile", user_name=user_name, query_text=query_text, query_category=query_category, top_k=top_k)
+            display_profile(profile)
+
+        elif profile_choice == "5":
+            # Exit profile mode
+            bubbly_print(f"Exiting profile mode for user: {user_name} 🚪", "👋")
+            break
+
+        else:
+            bubbly_print("Invalid choice! Please try again. 💫", "🤔")
+
+def display_profile(profile):
+    """
+    Helper function to display the user profile.
+    """
+    if 'message' in profile:
+        bubbly_print(profile['message'], "😕")
+    else:
+        bubbly_print(f"Profile of {profile['user']} 🧑‍💻")
+        print(f"Total bubbles: {profile['total_bubbles']}")
+        print("Recent bubbles:")
+        for bubble in profile['bubbles']:
+            print(f"💬 {bubble['content']} (Category: {bubble['category']})")
 
 if __name__ == "__main__":
     bubbly_print("🌟 Welcome to Bubbl.ai! 🌟", "✨")
@@ -28,9 +98,9 @@ if __name__ == "__main__":
         handle_action(client, action="create_bubble_schema")
 
         while True:
-            choice = input("👉 Make your bubbly choice (1-7): ")
+            choice = input("👉 Make your bubbly choice (1-8): ")
             
-            if not choice.isdigit() or not 1 <= int(choice) <= 7:
+            if not choice.isdigit() or not 1 <= int(choice) <= 8:
                 bubbly_print("Oops! That wasn't a valid choice. Let's try again! 💫", "🤔")
                 continue
 
@@ -39,7 +109,7 @@ if __name__ == "__main__":
                 bubbly_print("Let's blow a new bubble! 🎈")
                 user = input("Enter your bubbly username: ")
                 content = input("What's on your mind? Tell me and I'll bubble it up: ")
-                category = input("How would you categorize this bubble (e.g., Technology, Life, Fun). Press ENTER to skip: ")
+                category = input("How would you categorize this bubble, e.g., Technology, Life, Fun. (Press ENTER to skip): ")
                 bubble = [{"content": content, "user": user, "category": category}]
                 result = handle_action(client, action="insert_bubbles", bubbles=bubble)
                 if result:
@@ -85,6 +155,12 @@ if __name__ == "__main__":
                     bubbly_print(f"Oops! Could not pop the bubble with UUID {uuid}. Maybe it floated away? 🧐")
 
             elif choice == "5":
+                # Enter User Profile Mode
+                bubbly_print("Let's check out a Bubblr's profile! 👤")
+                user_name = input("Enter the username of the Bubblr you'd like to explore: ")
+                user_profile_mode(client, user_name)
+
+            elif choice == "6":
                 # Insert bubbles from a JSON file
                 bubbly_print("Time to blow some bubbles from a JSON file! 🎈")
                 json_file = input("Enter the path to your bubbly JSON file: ")
@@ -100,7 +176,7 @@ if __name__ == "__main__":
                 except FileNotFoundError:
                     bubbly_print("Oops! The file was not found. Double-check your path! 🚫")
 
-            elif choice == "6":
+            elif choice == "7":
                 # Remove all bubbles with confirmation
                 bubbly_print("⚠️ Are you sure you want to pop ALL the bubbles? This action is irreversible! ⚠️")
                 confirmation = input("Type 'yes' if you're absolutely sure: ")
@@ -113,7 +189,7 @@ if __name__ == "__main__":
                 else:
                     bubbly_print("Whew! That was close. The bubbles are safe. 😊", "😌")
 
-            elif choice == "7":
+            elif choice == "8":
                 # Exit the CLI
                 bubbly_print("Thank you for visiting Bubbl.ai! Until next time, keep your thoughts floating! ✨", "👋")
                 break

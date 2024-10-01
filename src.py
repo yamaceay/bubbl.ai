@@ -58,6 +58,73 @@ def query_most_relevant_bubbles(client, query_text: str, k: int = 10):
     
     return bubbles
 
+def query_user_profile(client, user_name: str, query_text: str = "", query_category: str = "", top_k: int = 10):
+    """
+    Query a user's profile based on their username.
+    Returns the latest bubbles created by the user and other metadata.
+    """
+    logging.info(f"Starting query for user: '{user_name}', category: '{query_category}', and query text: '{query_text}'.")
+    logging.info(f"Fetching up to {top_k} recent bubbles.")
+
+    # Query the 'Bubble' collection for bubbles by this user
+    bubble_collection = client.collections.get("Bubble")
+    
+    # Constructing the filter for the user and optionally the category
+    logging.info("Building filters for user and category.")
+    filters = wvc.query.Filter.by_property("user").like(f"{user_name}*")
+    if query_category:
+        logging.info(f"Adding category filter for: '{query_category}'.")
+        filters &= wvc.query.Filter.by_property("category").like(f"{query_category}*")
+
+    # Perform the query based on whether query_text is provided
+    if query_text:
+        logging.info(f"Performing near_text search with query text: '{query_text}'.")
+        try:
+            response = bubble_collection.query.near_text(
+                query=query_text,
+                filters=filters,
+                limit=top_k,
+            )
+        except Exception as e:
+            logging.error(f"Error during near_text query execution: {e}")
+            return None
+    else:
+        logging.info("Performing fetch_objects query without near_text.")
+        try:
+            response = bubble_collection.query.fetch_objects(
+                filters=filters,
+                limit=top_k,
+            )
+        except Exception as e:
+            logging.error(f"Error during fetch_objects query execution: {e}")
+            return None
+    
+    # Process the response and extract user-specific data
+    logging.info("Processing query response.")
+    user_bubbles = []
+    if response.objects:
+        for obj in response.objects:
+            bubble_data = {
+                "content": obj.properties.get('content'),
+                "category": obj.properties.get('category'),
+                "created_at": obj.properties.get('created_at')  # Assuming 'created_at' is a property
+            }
+            logging.info(f"Bubble found: {bubble_data['content'][:50]}... (Category: {bubble_data['category']})")
+            user_bubbles.append(bubble_data)
+    else:
+        logging.info(f"No bubbles found for user: '{user_name}'.")
+        return None
+    
+    # Additional user profile metadata
+    profile_data = {
+        "user": user_name,
+        "total_bubbles": len(user_bubbles),  # Total number of bubbles
+        "bubbles": user_bubbles
+    }
+    
+    logging.info(f"Query complete. Found {len(user_bubbles)} bubbles for user: '{user_name}'.")
+    return profile_data
+
 def group_bubbles_by_user(bubbles: List[Dict]):
     """
     Group the bubbles by user. Return a dictionary where the keys are users and values are concatenated content.
@@ -272,6 +339,13 @@ def handle_action(client, action, **kwargs):
         query_text = kwargs.get('query_text')
         top_k = kwargs.get('top_k', 5)
         return perform_similarity_search_users(client, query_text, top_k)
+
+    elif action == "query_user_profile":
+        user_name = kwargs.get('user_name')
+        query_text = kwargs.get('query_text', "")
+        query_category = kwargs.get('query_category', "")
+        top_k = kwargs.get('top_k', 5)
+        return query_user_profile(client, user_name, query_text, query_category, top_k)
 
     elif action == "remove_all_bubbles":
         # Remove all bubbles with confirmation
