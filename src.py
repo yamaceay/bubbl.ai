@@ -34,7 +34,7 @@ def connect_weaviate_client():
         }
     )
 
-def query_most_relevant_bubbles(client, query_text: str, k: int = 10):
+def query_most_relevant_bubbles(client, user: str, query_text: str, k: int = 10):
     """
     Query the 'Bubble' collection to find the most relevant k bubbles based on a text query.
     """
@@ -43,7 +43,8 @@ def query_most_relevant_bubbles(client, query_text: str, k: int = 10):
     
     response = bubble_collection.query.near_text(
         query_text,
-        limit=k
+        limit=k,
+        filters=wvc.query.Filter.by_property("user").not_equal(f"{user}")  # Exclude current user's bubbles
     )
     
     # Process the response and extract properties
@@ -111,9 +112,9 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
             }
             logging.info(f"Bubble found: {bubble_data['content'][:50]}... (Category: {bubble_data['category']})")
             user_bubbles.append(bubble_data)
+        logging.info(f"Query complete. Found {len(user_bubbles)} bubbles for user: '{user_name}'.")
     else:
         logging.info(f"No bubbles found for user: '{user_name}'.")
-        return None
     
     # Additional user profile metadata
     profile_data = {
@@ -122,7 +123,7 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
         "bubbles": user_bubbles
     }
     
-    logging.info(f"Query complete. Found {len(user_bubbles)} bubbles for user: '{user_name}'.")
+    
     return profile_data
 
 def group_bubbles_by_user(bubbles: List[Dict]):
@@ -217,7 +218,7 @@ def remove_bubble(client, user: str, uuid: str):
     Remove a bubble from the Weaviate database by UUID.
     """
     logging.info(f"Removing bubble with UUID {uuid}...")
-    old_bubble = client.collections.get("Bubble").data.get(uuid)
+    old_bubble = client.collections.get("Bubble").query.fetch_object_by_id(uuid)
     if old_bubble and old_bubble.properties.get("user") != user:
         logging.error(f"User {user} does not have permission to delete bubble with UUID {uuid}.")
         return False
@@ -231,18 +232,18 @@ def remove_bubble(client, user: str, uuid: str):
     except Exception as e:
         logging.error(f"An error occurred: {e}")
 
-def perform_similarity_search_bubbles(client, query_text: str, top_k: int):
+def perform_similarity_search_bubbles(client, user: str, query_text: str, top_k: int):
     """
     Perform a similarity search for the most relevant bubbles based on a query.
     """
-    bubbles = query_most_relevant_bubbles(client, query_text, top_k)
+    bubbles = query_most_relevant_bubbles(client, user, query_text, top_k)
     return bubbles
 
-def perform_similarity_search_users(client, query_text: str, top_k: int):
+def perform_similarity_search_users(client, user: str, query_text: str, top_k: int):
     """
     Perform a similarity search for the most relevant users based on their summaries.
     """
-    bubbles = query_most_relevant_bubbles(client, query_text, top_k)
+    bubbles = query_most_relevant_bubbles(client, user, query_text, top_k)
     bubbles_by_user = group_bubbles_by_user(bubbles)
     summary_by_user = summarize_user_content(bubbles_by_user)
     query_embedding = embed_text_with_openai(query_text)
@@ -250,7 +251,7 @@ def perform_similarity_search_users(client, query_text: str, top_k: int):
     ranked_users = compute_user_similarity(embedding_by_user, query_embedding)
     return ranked_users
 
-def perform_similarity_search_users_by_profile(client, query_text: str, top_k: int, top_k_user: int, user: str):
+def perform_similarity_search_users_by_profile(client, user: str, query_text: str, top_k: int, top_k_user: int):
     """
     Perform a similarity search for the most relevant users based on their profiles and the current user's profile.
     """
@@ -258,7 +259,7 @@ def perform_similarity_search_users_by_profile(client, query_text: str, top_k: i
     if user_profile['total_bubbles'] == 0:
         return []
     user_summary = summarize_user_content({user: user_profile['bubbles']})
-    bubbles = query_most_relevant_bubbles(client, query_text, top_k)
+    bubbles = query_most_relevant_bubbles(client, user, query_text, top_k)
     bubbles_by_user = group_bubbles_by_user(bubbles)
     summary_by_user = summarize_user_content(bubbles_by_user)
     summary_embedding = embed_text_with_openai(user_summary[user])
@@ -332,7 +333,7 @@ def insert_bubbles_from_json(client, json_data: List[Dict]):
     return None
 
 # Main function, now I/O-free
-def handle_action(client, action, **kwargs):
+def handle_action(client, user, action, **kwargs):
     """
     The handle_action function orchestrates actions based on the provided action argument.
     It expects a Weaviate client, the action type, and additional parameters passed through kwargs.
@@ -340,12 +341,11 @@ def handle_action(client, action, **kwargs):
 
     if action == "insert_bubbles":
         # Insert bubbles using user-provided content and category
-        bubbles = kwargs.get('bubbles')
+        bubbles = kwargs.get('bubble_data')
         return insert_bubbles(client, bubbles)
 
     elif action == "remove_bubble":
         # Remove a bubble using a UUID
-        user = kwargs.get('user')
         uuid = kwargs.get('uuid')
         return remove_bubble(client, user, uuid)
 
@@ -353,24 +353,23 @@ def handle_action(client, action, **kwargs):
         # Search for the most relevant bubbles based on a query
         query_text = kwargs.get('query_text')
         top_k = kwargs.get('top_k', 5)
-        return perform_similarity_search_bubbles(client, query_text, top_k)
+        return perform_similarity_search_bubbles(client, user, query_text, top_k)
 
     elif action == "search_users_by_profile":
         # Search for the most relevant users based on their summaries and the current user's profile
         query_text = kwargs.get('query_text')
         top_k = kwargs.get('top_k', 5)
         top_k_user = kwargs.get('top_k_user', 5)
-        user = kwargs.get('user')
-        return perform_similarity_search_users_by_profile(client, query_text, top_k, top_k_user, user)
+        return perform_similarity_search_users_by_profile(client, user, query_text, top_k, top_k_user)
         
     elif action == "search_users_by_query":
         # Search for the most relevant users based on similarity of their bubbles
         query_text = kwargs.get('query_text')
         top_k = kwargs.get('top_k', 5)
-        return perform_similarity_search_users(client, query_text, top_k)
+        return perform_similarity_search_users(client, user, query_text, top_k)
 
     elif action == "query_user_profile":
-        user_name = kwargs.get('user_name')
+        user_name = kwargs.get('user_name', user)
         query_text = kwargs.get('query_text', "")
         query_category = kwargs.get('query_category', "")
         top_k = kwargs.get('top_k', 5)
@@ -396,26 +395,25 @@ def handle_action(client, action, **kwargs):
     elif action == "register_user":
         # Register a new user
         users = kwargs.get('users', {})
-        user_name = kwargs.get('user')
         password = kwargs.get('password')
-        if user_name not in users:
-            users[user_name] = password
+        if user not in users:
+            users[user] = password
             return {'users': users}
         return None
+    
     elif action == "deregister_user":
         # Deregister a user
         users = kwargs.get('users', {})
-        user_name = kwargs.get('user')
         if user_name in users:
-            del users[user_name]
+            del users[user]
             return {'users': users}
         return None
+    
     elif action == "login_user":
         # Login a user
         users = kwargs.get('users', {})
-        user_name = kwargs.get('user')
         password = kwargs.get('password')
-        if user_name in users and password == users[user_name]:
+        if user in users and password == users[user]:
             return True
         return False
 
