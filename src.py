@@ -1,11 +1,12 @@
 import os
+import logging
+
+import numpy as np
+import openai
 import weaviate
 import weaviate.classes as wvc
-import openai
-import numpy as np
-from typing import List, Dict
 from sklearn.metrics.pairwise import cosine_similarity
-import logging
+from typing import List, Dict
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename="messages.log")
@@ -38,7 +39,7 @@ def query_most_relevant_bubbles(client, user: str, query_text: str, k: int = 10)
     """
     Query the 'Bubble' collection to find the most relevant k bubbles based on a text query.
     """
-    logging.info(f"Querying top {k} most relevant bubbles for text: '{query_text}'...")
+    logging.info("Querying top %d most relevant bubbles for text: '%s'...", k, query_text)
     bubble_collection = client.collections.get("Bubble")
     
     response = bubble_collection.query.near_text(
@@ -64,8 +65,8 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
     Query a user's profile based on their username.
     Returns the latest bubbles created by the user and other metadata.
     """
-    logging.info(f"Starting query for user: '{user_name}', category: '{query_category}', and query text: '{query_text}'.")
-    logging.info(f"Fetching up to {top_k} recent bubbles.")
+    logging.info("Starting query for user: '%s', category: '%s', and query text: '%s'.", user_name, query_category, query_text)
+    logging.info("Fetching up to %d recent bubbles.", top_k)
 
     # Query the 'Bubble' collection for bubbles by this user
     bubble_collection = client.collections.get("Bubble")
@@ -74,12 +75,12 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
     logging.info("Building filters for user and category.")
     filters = wvc.query.Filter.by_property("user").like(f"{user_name}*")
     if query_category:
-        logging.info(f"Adding category filter for: '{query_category}'.")
+        logging.info("Adding category filter for: '%s'.", query_category)
         filters &= wvc.query.Filter.by_property("category").like(f"{query_category}*")
 
     # Perform the query based on whether query_text is provided
     if query_text:
-        logging.info(f"Performing near_text search with query text: '{query_text}'.")
+        logging.info("Performing near_text search with query text: '%s'.", query_text)
         try:
             response = bubble_collection.query.near_text(
                 query=query_text,
@@ -87,7 +88,7 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
                 limit=top_k,
             )
         except Exception as e:
-            logging.error(f"Error during near_text query execution: {e}")
+            logging.error("An error occurred during near_text query execution: %s", e)
             return None
     else:
         logging.info("Performing fetch_objects query without near_text.")
@@ -97,7 +98,7 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
                 limit=top_k,
             )
         except Exception as e:
-            logging.error(f"Error during fetch_objects query execution: {e}")
+            logging.error("An error occurred during fetch_objects query execution: %s", e)
             return None
     
     # Process the response and extract user-specific data
@@ -110,11 +111,11 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
                 "category": obj.properties.get('category'),
                 "created_at": obj.properties.get('created_at')  # Assuming 'created_at' is a property
             }
-            logging.info(f"Bubble found: {bubble_data['content'][:50]}... (Category: {bubble_data['category']})")
+            logging.info("Bubble found: %s... (Category: %s)", bubble_data['content'][:50], bubble_data['category'])
             user_bubbles.append(bubble_data)
-        logging.info(f"Query complete. Found {len(user_bubbles)} bubbles for user: '{user_name}'.")
+        logging.info("Query complete. Found %d bubbles for user: '%s'.", len(user_bubbles), user_name)
     else:
-        logging.info(f"No bubbles found for user: '{user_name}'.")
+        logging.info("No bubbles found for user: '%s'.", user_name)
     
     # Additional user profile metadata
     profile_data = {
@@ -155,7 +156,7 @@ def embed_text_with_openai(text: str) -> np.ndarray:
     """
     Embed a text using OpenAI's embedding API.
     """
-    logging.info(f"Embedding text with OpenAI: {text[:50]}...")  # Log first 50 chars for context
+    logging.info("Embedding text with OpenAI: %s...", text[:50])  # Log first 50 chars for context
     response = openai.embeddings.create(input=text, model="text-embedding-ada-002")
     embedding = response.data[0].embedding
     return np.array(embedding)
@@ -210,27 +211,25 @@ def insert_bubbles(client, bubbles: List[Dict]):
         )
         return response.uuids
     except Exception as e:
-        logging.error(f"Error inserting bubbles: {e}")
+        logging.error("An error occurred: %s", e)
     return None
 
 def remove_bubble(client, user: str, uuid: str):
     """
     Remove a bubble from the Weaviate database by UUID.
     """
-    logging.info(f"Removing bubble with UUID {uuid}...")
+    logging.info("Removing bubble with UUID %s...", uuid)
     old_bubble = client.collections.get("Bubble").query.fetch_object_by_id(uuid)
     if old_bubble and old_bubble.properties.get("user") != user:
-        logging.error(f"User {user} does not have permission to delete bubble with UUID {uuid}.")
+        logging.error("User %s does not have permission to delete bubble with UUID %s.", user, uuid)
         return False
     try:
         # Deleting the object using the UUID
         client.collections.get("Bubble").data.delete_by_id(uuid)
-        logging.info(f"Bubble with UUID {uuid} removed successfully.")
+        logging.info("Bubble with UUID %s removed successfully.", uuid)
         return True
-    except weaviate.exceptions.UnexpectedStatusCodeException as e:
-        logging.error(f"Error: {e}")
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        logging.error("An unexpected error occurred: %s", e)
 
 def perform_similarity_search_bubbles(client, user: str, query_text: str, top_k: int):
     """
@@ -283,7 +282,7 @@ def create_bubble_schema(client):
             ]
         )
         logging.info("Bubble collection created")
-        logging.debug("Config check:", bubbles.config.get(simple=True) is not None)
+        logging.debug("Config check: %s", bubbles.config.get(simple=True) is not None)
         return True
     else:
         logging.info("Bubble collection already exists.")
@@ -312,7 +311,7 @@ def remove_all_bubbles(client):
         return True
 
     except Exception as e:
-        logging.error(f"An error occurred while deleting and re-creating the schema: {e}")
+        logging.error("An error occurred while deleting and re-creating the schema: %s", e)
     return False
 
 def insert_bubbles_from_json(client, json_data: List[Dict]):
@@ -329,7 +328,7 @@ def insert_bubbles_from_json(client, json_data: List[Dict]):
         if response.uuids:
             return response.uuids
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        logging.error("An error occurred: %s", e)
     return None
 
 # Main function, now I/O-free
