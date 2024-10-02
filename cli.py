@@ -88,6 +88,65 @@ def display_profile(profile):
 if __name__ == "__main__":
     bubbly_print("🌟 Welcome to Bubbl.ai! 🌟", "✨")
     bubbly_print("You're about to dive into the world of bubbles – your thoughts, ideas, and musings all wrapped up in one fun, floating place!", "💭")
+
+    user = None
+    with open("users.json", "r") as f:
+        users = json.load(f)
+    print("\n👋 Let's get started! Please sign up or log in to Bubbl.ai.",
+          "\n1. 📝 Register",
+          "\n2. 🔑 Log in",
+          "\n3. 🚨 Deregister",
+          "\n4. 🚪 Exit",
+          "\n" + "-"*40 + "\n")
+    while True:
+        choice = input("👉 Make your bubbly choice (1-4): ")
+        if choice == "1":
+            # Register
+            user_name = input("Enter your bubbly username: ")
+            password = input("Enter your bubbly password: ")
+            result = handle_action(None, action="register_user", users=users, user=user_name, password=password)
+            if result and 'users' in result:
+                bubbly_print("🎉 Registration successful! You're now a Bubblr! 🎉", "🎈")
+                user = user_name
+                users = result.get('users')
+                with open("users.json", "w") as f:
+                    json.dump(users, f, indent=4)
+                if input("Do you want to continue with login / registration? (yes/no): ") == "yes":
+                    continue
+                break
+            else:
+                bubbly_print("Oops! Something went wrong during registration. Try again?", "😬")
+        elif choice == "2":
+            # Log in
+            user_name = input("Enter your bubbly username: ")
+            password = input("Enter your bubbly password: ")
+            result = handle_action(None, action="login_user", users=users, user=user_name, password=password)
+            if result:
+                bubbly_print("🎉 Login successful! Welcome back to Bubbl.ai! 🎉", "🎈")
+                user = user_name
+                break
+            else:
+                bubbly_print("Oops! Something went wrong during login. Try again?", "😬")
+        elif choice == "3":
+            # Deregister
+            result = handle_action(None, action="deregister_user", users=users, user=user)
+            if result and 'users' in result:
+                bubbly_print("🎉 Deregistration successful! You're no longer a Bubblr. Come back soon! 🎉", "🎈")
+                users = result.get('users')
+                with open("users.json", "w") as f:
+                    json.dump(users, f, indent=4)
+                if input ("Do you want to continue with login / registration? (yes/no): ") == "yes":
+                    continue
+                break
+            else:
+                bubbly_print("Oops! Something went wrong during deregistration. Try again?", "😬")
+        elif choice == "4":
+            # Exit the CLI
+            bubbly_print("Thank you for visiting Bubbl.ai! Until next time, keep your thoughts floating! ✨", "👋")
+            exit(0)
+        else:   
+            bubbly_print("Oops! That wasn't a valid choice. Let's try again! 💫", "🤔")
+
     print_menu()
    
     client = connect_weaviate_client()
@@ -107,7 +166,6 @@ if __name__ == "__main__":
             if choice == "1":
                 # Insert a bubble
                 bubbly_print("Let's blow a new bubble! 🎈")
-                user = input("Enter your bubbly username: ")
                 content = input("What's on your mind? Tell me and I'll bubble it up: ")
                 category = input("How would you categorize this bubble, e.g., Technology, Life, Fun. (Press ENTER to skip): ")
                 bubble = [{"content": content, "user": user, "category": category}]

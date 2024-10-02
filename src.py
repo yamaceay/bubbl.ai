@@ -212,11 +212,15 @@ def insert_bubbles(client, bubbles: List[Dict]):
         logging.error(f"Error inserting bubbles: {e}")
     return None
 
-def remove_bubble(client, uuid: str):
+def remove_bubble(client, user: str, uuid: str):
     """
     Remove a bubble from the Weaviate database by UUID.
     """
     logging.info(f"Removing bubble with UUID {uuid}...")
+    old_bubble = client.collections.get("Bubble").data.get(uuid)
+    if old_bubble and old_bubble.properties.get("user") != user:
+        logging.error(f"User {user} does not have permission to delete bubble with UUID {uuid}.")
+        return False
     try:
         # Deleting the object using the UUID
         client.collections.get("Bubble").data.delete_by_id(uuid)
@@ -325,8 +329,9 @@ def handle_action(client, action, **kwargs):
 
     elif action == "remove_bubble":
         # Remove a bubble using a UUID
+        user = kwargs.get('user')
         uuid = kwargs.get('uuid')
-        return remove_bubble(client, uuid)
+        return remove_bubble(client, user, uuid)
 
     elif action == "search_bubbles":
         # Search for the most relevant bubbles based on a query
@@ -363,6 +368,32 @@ def handle_action(client, action, **kwargs):
     elif action == "create_bubble_schema":
         # Create the bubble schema if it doesn't already exist
         return create_bubble_schema(client)
+    
+    elif action == "register_user":
+        # Register a new user
+        users = kwargs.get('users', {})
+        user_name = kwargs.get('user')
+        password = kwargs.get('password')
+        if user_name not in users:
+            users[user_name] = password
+            return {'users': users}
+        return None
+    elif action == "deregister_user":
+        # Deregister a user
+        users = kwargs.get('users', {})
+        user_name = kwargs.get('user')
+        if user_name in users:
+            del users[user_name]
+            return {'users': users}
+        return None
+    elif action == "login_user":
+        # Login a user
+        users = kwargs.get('users', {})
+        user_name = kwargs.get('user')
+        password = kwargs.get('password')
+        if user_name in users and password == users[user_name]:
+            return True
+        return False
 
     else:
         raise ValueError("Invalid action specified.")
