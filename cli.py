@@ -193,8 +193,9 @@ if __name__ == "__main__":
                 # Search users by similarity
                 bubbly_print("Let's find other Bubblers who think like you! 🫂")
                 query_text = input("Enter your search query: ")
-                top_k = int(input("How many bubbles would you like to see? (Enter a number): "))
-                users = handle_action(client, action="search_users", query_text=query_text, top_k=top_k)
+                top_k = int(input("How many bubbles would you like to use for others' summaries? (Enter a number): "))
+                top_k_user = int(input("How many bubbles would you like to use for your own summary? (Enter a number): "))
+                users = handle_action(client, action="search_users_by_query", query_text=query_text, top_k=top_k, top_k_user=top_k_user, user=user)
                 if users:
                     print("🎈 Bubblers with similar thoughts:")
                     for user in users:

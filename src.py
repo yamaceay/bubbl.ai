@@ -243,11 +243,27 @@ def perform_similarity_search_users(client, query_text: str, top_k: int):
     Perform a similarity search for the most relevant users based on their summaries.
     """
     bubbles = query_most_relevant_bubbles(client, query_text, top_k)
-    user_bubbles = group_bubbles_by_user(bubbles)
-    user_summaries = summarize_user_content(user_bubbles)
+    bubbles_by_user = group_bubbles_by_user(bubbles)
+    summary_by_user = summarize_user_content(bubbles_by_user)
     query_embedding = embed_text_with_openai(query_text)
-    user_embeddings = embed_user_summaries(user_summaries)
-    ranked_users = compute_user_similarity(user_embeddings, query_embedding)
+    embedding_by_user = embed_user_summaries(summary_by_user)
+    ranked_users = compute_user_similarity(embedding_by_user, query_embedding)
+    return ranked_users
+
+def perform_similarity_search_users_by_profile(client, query_text: str, top_k: int, top_k_user: int, user: str):
+    """
+    Perform a similarity search for the most relevant users based on their profiles and the current user's profile.
+    """
+    user_profile = query_user_profile(client, user, query_text, top_k_user)
+    if user_profile['total_bubbles'] == 0:
+        return []
+    user_summary = summarize_user_content({user: user_profile['bubbles']})
+    bubbles = query_most_relevant_bubbles(client, query_text, top_k)
+    bubbles_by_user = group_bubbles_by_user(bubbles)
+    summary_by_user = summarize_user_content(bubbles_by_user)
+    summary_embedding = embed_text_with_openai(user_summary[user])
+    embedding_by_user = embed_user_summaries(summary_by_user)
+    ranked_users = compute_user_similarity(embedding_by_user, summary_embedding)
     return ranked_users
 
 def create_bubble_schema(client):
@@ -339,7 +355,15 @@ def handle_action(client, action, **kwargs):
         top_k = kwargs.get('top_k', 5)
         return perform_similarity_search_bubbles(client, query_text, top_k)
 
-    elif action == "search_users":
+    elif action == "search_users_by_profile":
+        # Search for the most relevant users based on their summaries and the current user's profile
+        query_text = kwargs.get('query_text')
+        top_k = kwargs.get('top_k', 5)
+        top_k_user = kwargs.get('top_k_user', 5)
+        user = kwargs.get('user')
+        return perform_similarity_search_users_by_profile(client, query_text, top_k, top_k_user, user)
+        
+    elif action == "search_users_by_query":
         # Search for the most relevant users based on similarity of their bubbles
         query_text = kwargs.get('query_text')
         top_k = kwargs.get('top_k', 5)
