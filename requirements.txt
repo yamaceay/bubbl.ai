@@ -1,6 +1,6 @@
-Flask==3.0.3
-numpy==2.1.1
-openai==1.51.0
-python_bcrypt==0.3.2
-scikit_learn==1.5.2
-weaviate_client==4.8.1
+Flask
+numpy
+bcrypt
+openai
+scikit_learn
+weaviate_client

@@ -212,7 +212,7 @@ def insert_bubble(handler):
     print(f"Here are some popular categories: {', '.join(category_suggestions)}")
     category = input("How would you categorize this bubble? (Press ENTER to skip): ")
     bubble = [{"content": content, "user": handler.user, "category": category}]
-    result = handler.insert_bubble(bubble)
+    result = handler.insert_bubbles(bubble)
     if result:
         bubbly_print(f"✨ Your bubble has been blown with ID(s): {result}! 🎉", "🫧")
     else:
