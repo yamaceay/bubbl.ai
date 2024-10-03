@@ -265,7 +265,7 @@ def find_like_minded_bubblers(handler):
     limit_user = 5 # Number of bubbles to fetch from the current user for comparison
     bubbly_print("Let’s find some fellow Bubblers who think like you! 🫂")
     query_text = input("Enter your search query: ")
-    users_similarity = handler.search_users_by_query(query_text, limit, limit_user)
+    users_similarity = handler.search_users_by_profile(query_text, limit, limit_user)
     if users_similarity:
         print("🎈 Here are some Bubblers who share your thoughts:")
         for user_data in users_similarity:
