@@ -6,7 +6,7 @@ import openai
 import weaviate
 import weaviate.classes as wvc
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Dict
+from typing import List, Dict, Optional, Union
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename="messages.log")
@@ -334,92 +334,67 @@ def insert_bubbles_from_json(client, json_data: List[Dict]):
         logging.error("An error occurred: %s", e)
     return None
 
-# Main function, now I/O-free
-def handle_action(client, user, action, **kwargs):
+class Handler:
     """
-    The handle_action function orchestrates actions based on the provided action argument.
-    It expects a Weaviate client, the action type, and additional parameters passed through kwargs.
+    Handler class to interact with the Weaviate client and perform various operations.
     """
+    def __init__(self, client, user: str):
+        self.client = client
+        self.user = user
 
-    if action == "insert_bubbles":
-        # Insert bubbles using user-provided content and category
-        bubbles = kwargs.get('bubble_data')
-        return insert_bubbles(client, bubbles)
+    def insert_bubbles(self, bubbles: List[Dict[str, Union[str, int]]]) -> Optional[List[str]]:
+        """
+        Insert bubbles using user-provided content and category.
+        """
+        return insert_bubbles(self.client, bubbles)
 
-    elif action == "remove_bubble":
-        # Remove a bubble using a UUID
-        uuid = kwargs.get('uuid')
-        return remove_bubble(client, user, uuid)
+    def remove_bubble(self, uuid: str) -> bool:
+        """
+        Remove a bubble using its UUID.
+        """
+        return remove_bubble(self.client, self.user, uuid)
 
-    elif action == "search_bubbles":
-        # Search for the most relevant bubbles based on a query
-        query_text = kwargs.get('query_text')
-        limit = kwargs.get('limit', 5)
-        offset = kwargs.get('offset', 0)
-        return perform_similarity_search_bubbles(client, user, query_text, limit, offset)
+    def search_bubbles(self, query_text: str, limit: int = 5, offset: int = 0) -> Optional[List[Dict[str, Union[str, int]]]]:
+        """
+        Search for the most relevant bubbles based on a query.
+        """
+        return perform_similarity_search_bubbles(self.client, self.user, query_text, limit, offset)
 
-    elif action == "search_users_by_profile":
-        # Search for the most relevant users based on their summaries and the current user's profile
-        query_text = kwargs.get('query_text')
-        limit = kwargs.get('limit', 50)
-        limit_user = kwargs.get('limit_user', 5)
-        return perform_similarity_search_users_by_profile(client, user, query_text, limit, limit_user)
-        
-    elif action == "search_users_by_query":
-        # Search for the most relevant users based on similarity of their bubbles
-        query_text = kwargs.get('query_text')
-        limit = kwargs.get('limit', 5)
-        return perform_similarity_search_users(client, user, query_text, limit)
+    def search_users_by_profile(self, query_text: str, limit: int = 50, limit_user: int = 5) -> Optional[List[Dict[str, float]]]:
+        """
+        Search for the most relevant users based on the current user's profile.
+        """
+        return perform_similarity_search_users_by_profile(self.client, self.user, query_text, limit, limit_user)
 
-    elif action == "query_user_profile":
-        user_name = kwargs.get('user_name', user)
-        query_text = kwargs.get('query_text', "")
-        query_category = kwargs.get('query_category', "")
-        limit = kwargs.get('limit', 5)
-        offset = kwargs.get('offset', 0)
-        return query_user_profile(client, user_name, query_text, query_category, limit, offset)
+    def search_users_by_query(self, query_text: str, limit: int = 5) -> Optional[List[Dict[str, float]]]:
+        """
+        Search for the most relevant users based on similarity of their bubbles.
+        """
+        return perform_similarity_search_users(self.client, self.user, query_text, limit)
 
-    elif action == "remove_all_bubbles":
-        # Remove all bubbles with confirmation
-        confirmation = kwargs.get('confirmation', 'no')
+    def query_user_profile(self, user_name: Optional[str] = None, query_text: str = "", query_category: str = "", limit: int = 5, offset: int = 0) -> Optional[Dict[str, Union[str, int, List[Dict[str, str]]]]]:
+        """
+        Query a user's profile, returning the latest bubbles created by the user and other metadata.
+        """
+        user_name = user_name if user_name else self.user
+        return query_user_profile(self.client, user_name, query_text, query_category, limit, offset)
+
+    def remove_all_bubbles(self, confirmation: str = 'no') -> bool:
+        """
+        Remove all bubbles with confirmation.
+        """
         if confirmation.lower() == "yes":
-            return remove_all_bubbles(client)
-        else:
-            return False
-
-    elif action == "insert_bubbles_from_json":
-        # Insert bubbles from provided JSON data
-        json_data = kwargs.get('json_data')
-        return insert_bubbles_from_json(client, json_data)
-
-    elif action == "create_bubble_schema":
-        # Create the bubble schema if it doesn't already exist
-        return create_bubble_schema(client)
-    
-    elif action == "register_user":
-        # Register a new user
-        users = kwargs.get('users', {})
-        password = kwargs.get('password')
-        if user not in users:
-            users[user] = password
-            return {'users': users}
-        return None
-    
-    elif action == "deregister_user":
-        # Deregister a user
-        users = kwargs.get('users', {})
-        if user_name in users:
-            del users[user]
-            return {'users': users}
-        return None
-    
-    elif action == "login_user":
-        # Login a user
-        users = kwargs.get('users', {})
-        password = kwargs.get('password')
-        if user in users and password == users[user]:
-            return True
+            return remove_all_bubbles(self.client)
         return False
 
-    else:
-        raise ValueError("Invalid action specified.")
+    def insert_bubbles_from_json(self, json_data: List[Dict[str, Union[str, int]]]) -> Optional[List[str]]:
+        """
+        Insert bubbles from provided JSON data.
+        """
+        return insert_bubbles_from_json(self.client, json_data)
+
+    def create_bubble_schema(self) -> bool:
+        """
+        Create the bubble schema if it doesn't already exist.
+        """
+        return create_bubble_schema(self.client)

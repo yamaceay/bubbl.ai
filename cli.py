@@ -3,9 +3,8 @@ import sys
 import termios
 import tty
 import time
-import getpass
 import bcrypt
-from lib import connect_weaviate_client, handle_action
+from lib import Handler, connect_weaviate_client
 
 ### Helper Functions ###
 def bubbly_print(message, emoji="💬"):
@@ -109,12 +108,12 @@ def connect_weaviate_with_retries(retries=3, delay=2):
         time.sleep(delay)
     return None
 
-def developer_mode(client, user):
+def developer_mode(handler):
     """
     Provides options for managing all bubbles in Developer Mode.
     """
     while True:
-        print(f"\n👨‍💻 Developer Mode activated for {user}!")
+        print(f"\n👨‍💻 Developer Mode activated for {handler.user}!")
         options = [
             "📂 Blow Bubbles from a JSON File",
             "🚨 Pop ALL the Bubbles (Careful!)",
@@ -123,15 +122,15 @@ def developer_mode(client, user):
         choice = prompt_choice(options, "Choose your developer action: ")
 
         if choice == 1:
-            insert_bubbles_from_json(client, user)
+            insert_bubbles_from_json(handler)
         elif choice == 2:
-            pop_all_bubbles(client, user)
+            pop_all_bubbles(handler)
         elif choice == 3:
-            bubbly_print(f"Exiting Developer Mode for {user}. 🌬️", "👋")
+            bubbly_print(f"Exiting Developer Mode for {handler.user}. 🌬️", "👋")
             break
 
 
-def insert_bubbles_from_json(client, user):
+def insert_bubbles_from_json(handler):
     """
     Inserts bubbles from a JSON file into the Bubbl.ai platform.
     """
@@ -140,7 +139,7 @@ def insert_bubbles_from_json(client, user):
     try:
         with open(json_file, "r", encoding="utf-8") as f:
             json_data = json.load(f)
-        result = handle_action(client, user, "insert_bubbles_from_json", json_data=json_data)
+        result = handler.insert_bubbles_from_json(json_data)
         if result:
             bubbly_print(f"✨ Bubbles successfully blown! Bubble IDs: {result} 🎉")
         else:
@@ -149,14 +148,14 @@ def insert_bubbles_from_json(client, user):
         bubbly_print(f"Oops! File error: {e}. Please check and try again! 🚫", "😬")
 
 
-def pop_all_bubbles(client, user):
+def pop_all_bubbles(handler):
     """
     Removes all bubbles from the Bubbl.ai platform after user confirmation.
     """
     bubbly_print("⚠️ Are you **really** sure you want to pop ALL the bubbles? Once they're gone, there's no bringing them back! ⚠️")
     confirmation = input("Type 'yes' if you're absolutely certain: ").lower()
     if confirmation == 'yes':
-        success = handle_action(client, user, "remove_all_bubbles", confirmation=confirmation)
+        success = handler.remove_all_bubbles(confirmation)
         if success:
             bubbly_print("💥 Poof! All the bubbles are gone! Fresh air ahead! 🫧")
         else:
@@ -165,12 +164,12 @@ def pop_all_bubbles(client, user):
         bubbly_print("Phew! The bubbles are safe for now. 😊", "😌")
 
 
-def creative_self_mode(client, user):
+def creative_self_mode(handler):
     """
     Provides options to the user for managing their own bubbles.
     """
     while True:
-        print(f"\n🎨 Welcome to Creative Self Mode, {user}! Time to shape your bubble universe! ✨")
+        print(f"\n🎨 Welcome to Creative Self Mode, {handler.user}! Time to shape your bubble universe! ✨")
         options = [
             "💭 Blow a new bubble",
             "🗑️ Pop one of your bubbles",
@@ -180,30 +179,30 @@ def creative_self_mode(client, user):
         choice = prompt_choice(options)
 
         if choice == 1:
-            insert_bubble(client, user)
+            insert_bubble(handler)
         elif choice == 2:
-            remove_bubble(client, user)
+            remove_bubble(handler)
         elif choice == 3:
-            query_user_profile(client, user)
+            query_user_profile(handler)
         elif choice == 4:
-            bubbly_print(f"Floating away from Creative Self Mode for {user}. 🌬️", "👋")
+            bubbly_print(f"Floating away from Creative Self Mode for {handler.user}. 🌬️", "👋")
             break
 
-def query_user_profile(client, user):
+def query_user_profile(handler):
     """
     Provides options to the user for querying their own profile bubbles.
     """
     offset = 0
     limit = 5
     while True:
-        bubbly_print(f"Peeking into your profile bubbles, {user}. Let’s see what you’ve been bubbling about! 🔍", "👤")
-        profile = handle_action(client, user, "query_user_profile", limit=limit, offset=offset)
+        bubbly_print(f"Peeking into your profile bubbles, {handler.user}. Let’s see what you’ve been bubbling about! 🔍", "👤")
+        profile = handler.query_user_profile(handler.user, limit, offset)
         display_profile(profile)
         if input("Do you want to see more bubbles? (y/n): ").lower() != 'y':
             break
         offset += limit
 
-def insert_bubble(client, user):
+def insert_bubble(handler):
     """
     Allows the user to create and insert a new bubble into the Bubbl.ai platform.
     """
@@ -212,28 +211,28 @@ def insert_bubble(client, user):
     category_suggestions = ["Technology", "Life", "Fun"]
     print(f"Here are some popular categories: {', '.join(category_suggestions)}")
     category = input("How would you categorize this bubble? (Press ENTER to skip): ")
-    bubble = [{"content": content, "user": user, "category": category}]
-    result = handle_action(client, user, action="insert_bubbles", bubble_data=bubble)
+    bubble = [{"content": content, "user": handler.user, "category": category}]
+    result = handler.insert_bubble(bubble)
     if result:
         bubbly_print(f"✨ Your bubble has been blown with ID(s): {result}! 🎉", "🫧")
     else:
         bubbly_print("Uh-oh! Something went wrong. Your bubble didn’t float this time. Try again! 🌬️", "😬")
 
 
-def remove_bubble(client, user):
+def remove_bubble(handler):
     """
     Allows the user to remove one of their bubbles by specifying the UUID.
     """
     bubbly_print("Time to pop one of your bubbles! 🗑️")
     uuid = input("Enter the UUID of the bubble you want to pop: ")
-    success = handle_action(client, user, action="remove_bubble", uuid=uuid)
+    success = handler.remove_bubble(uuid)
     if success:
         bubbly_print(f"✨ Bubble with UUID {uuid} has been successfully popped! 🎉", "🎈")
     else:
         bubbly_print(f"Oops! Couldn’t find that bubble with UUID {uuid}. It might’ve floated away. 🧐")
 
 
-def explore_bubbles(client, user):
+def explore_bubbles(handler):
     """
     Allows the user to explore and search for bubbles created by others based on a query.
     """
@@ -243,7 +242,7 @@ def explore_bubbles(client, user):
 
     offset = 0
     while True:
-        bubbles = handle_action(client, user, action="search_bubbles", query_text=query_text, limit=page_size, offset=offset)
+        bubbles = handler.search_bubbles(query_text, page_size, offset)
         if bubbles:
             print("🫧 Found these thought bubbles:")
             for bubble in bubbles:
@@ -258,7 +257,7 @@ def explore_bubbles(client, user):
         offset += page_size
 
 
-def find_like_minded_bubblers(client, user):
+def find_like_minded_bubblers(handler):
     """
     Searches for other users with similar bubbles and thought patterns based on a search query.
     """
@@ -266,7 +265,7 @@ def find_like_minded_bubblers(client, user):
     limit_user = 5 # Number of bubbles to fetch from the current user for comparison
     bubbly_print("Let’s find some fellow Bubblers who think like you! 🫂")
     query_text = input("Enter your search query: ")
-    users_similarity = handle_action(client, user, action="search_users_by_query", query_text=query_text, limit=limit, limit_user=limit_user)
+    users_similarity = handler.search_users_by_query(query_text, limit, limit_user)
     if users_similarity:
         print("🎈 Here are some Bubblers who share your thoughts:")
         for user_data in users_similarity:
@@ -275,7 +274,7 @@ def find_like_minded_bubblers(client, user):
         bubbly_print("No similar Bubblers found. Try another search! 🌟")
 
 
-def user_profile_mode(client, user_name, user):
+def user_profile_mode(handler, user_name):
     """
     Enters the Profile Lookup Mode, allowing the current user to view and query another user's bubbles.
     """
@@ -302,7 +301,7 @@ def user_profile_mode(client, user_name, user):
             query_category = input("Enter the category to filter by (Press ENTER to clear): ").strip()
         elif profile_choice == 3:
             while True:
-                perform_query(client, user_name, user, query_text, query_category, limit, offset)
+                perform_query(handler, user_name, query_text, query_category, limit, offset)
                 page = input("Do you want to see more bubbles? (n for next, p for previous, any other key for no): ")
                 if page == "n":
                     offset += limit
@@ -315,12 +314,12 @@ def user_profile_mode(client, user_name, user):
             break
 
 
-def perform_query(client, user_name, user, query_text, query_category, limit, offset):
+def perform_query(handler, user_name, query_text, query_category, limit, offset):
     """
     Performs a search query for bubbles related to a user profile with optional filters.
     """
     bubbly_print(f"Searching for bubbles with query: '{query_text or 'None'}', category: '{query_category or 'None'}', showing the top {offset} - {offset + limit} results.", "🚀")
-    profile = handle_action(client, user, action="query_user_profile", user_name=user_name, query_text=query_text, query_category=query_category, limit=limit, offset=offset)
+    profile = handler.query_user_profile(user_name, query_text, query_category, limit, offset)
     display_profile(profile)
 
 
@@ -338,13 +337,13 @@ def display_profile(profile):
             print(f"💬 {bubble['content']} (Category: {bubble['category']})")
 
 
-def enter_profile_lookup_mode(client, user):
+def enter_profile_lookup_mode(handler):
     """
     Prompts the user to enter a username and view another user's profile bubbles.
     """
     bubbly_print("Let’s peek into someone else’s bubble universe! 👤")
     user_name = input("Enter the username of the Bubblr you'd like to explore: ")
-    user_profile_mode(client, user_name, user)
+    user_profile_mode(handler, user_name)
 
 
 ### User Management ###
@@ -391,10 +390,9 @@ def register_user(users):
     """
     user_name = input("Enter your bubbly username: ")
     password = hash_password(custom_getpass("Enter your bubbly password: "))
-    result = handle_action(None, user_name, "register_user", users=users, password=password)
-    if result and 'users' in result:
+    if user_name not in users:
+        users[user_name] = password
         bubbly_print("🎉 Welcome to the bubble universe! You’re officially a Bubblr! 🎉", "🎈")
-        users = result.get('users')
         with open("users.json", "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4)
         return user_name
@@ -426,15 +424,43 @@ def deregister_user(users, user):
     if user is None:
         bubbly_print("Please log in before attempting to deregister. 😬")
         return
-    result = handle_action(None, user, action="deregister_user", users=users)
-    if result and 'users' in result:
+    if user in users:
+        del users[user]
         bubbly_print("🎉 You’ve successfully popped your account. Come back to bubble anytime! 🎉", "🎈")
-        users = result.get('users')
         with open("users.json", "w", encoding="utf-8") as f:
             json.dump(users, f, indent=4)
     else:
         bubbly_print("Oops! Something went wrong during deregistration. Try again? 😬")
 
+def main_menu(handler):
+    """
+    Displays the main menu and handles the user’s selection of actions.
+    """
+    while True:
+        options = [
+            "🎨 Creative Self Mode (Shape Your Profile)",
+            "🔍 Explore Bubbles (Discover Thought Bubbles)",
+            "🔍 Find Like-minded Bubblers (Find Fellow Bubblers by Similarity)",
+            "👤 Profile Lookup Mode (Peek at User Profiles)",
+            "👨‍💻 Developer Mode (Tinker with All Bubbles)",
+            "🚪 Drift Away from Bubbl.ai (Exit)"
+        ]
+        choice = prompt_choice(options)
+
+        if choice == 1:
+            bubbly_print("🎨 Welcome to Creative Self Mode! 🎨", "🎨")
+            creative_self_mode(handler)
+        elif choice == 2:
+            explore_bubbles(handler)
+        elif choice == 3:
+            find_like_minded_bubblers(handler)
+        elif choice == 4:
+            enter_profile_lookup_mode(handler)
+        elif choice == 5:
+            developer_mode(handler)
+        elif choice == 6:
+            bubbly_print("Thanks for visiting Bubbl.ai! Until next time, keep your thoughts floating! ✨", "👋")
+            break
 
 ### Main ###
 def main():
@@ -454,41 +480,12 @@ def main():
             bubbly_print("Oops! Couldn’t connect to the Bubbl.ai server. Try again later! 😕", "😕")
             return
 
+        handler = Handler(client, user)
         try:
-            handle_action(client, user, "create_bubble_schema")
-            main_menu(client, user)
+            handler.create_bubble_schema()
+            main_menu(handler)
         finally:
             client.close()
-
-def main_menu(client, user):
-    """
-    Displays the main menu and handles the user’s selection of actions.
-    """
-    while True:
-        options = [
-            "🎨 Creative Self Mode (Shape Your Profile)",
-            "🔍 Explore Bubbles (Discover Thought Bubbles)",
-            "🔍 Find Like-minded Bubblers (Find Fellow Bubblers by Similarity)",
-            "👤 Profile Lookup Mode (Peek at User Profiles)",
-            "👨‍💻 Developer Mode (Tinker with All Bubbles)",
-            "🚪 Drift Away from Bubbl.ai (Exit)"
-        ]
-        choice = prompt_choice(options)
-
-        if choice == 1:
-            bubbly_print("🎨 Welcome to Creative Self Mode! 🎨", "🎨")
-            creative_self_mode(client, user)
-        elif choice == 2:
-            explore_bubbles(client, user)
-        elif choice == 3:
-            find_like_minded_bubblers(client, user)
-        elif choice == 4:
-            enter_profile_lookup_mode(client, user)
-        elif choice == 5:
-            developer_mode(client, user)
-        elif choice == 6:
-            bubbly_print("Thanks for visiting Bubbl.ai! Until next time, keep your thoughts floating! ✨", "👋")
-            break
 
 if __name__ == "__main__":
     main()
