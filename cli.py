@@ -1,5 +1,9 @@
 import json
+import sys
+import termios
+import tty
 import time
+import getpass
 import bcrypt
 from lib import connect_weaviate_client, handle_action
 
@@ -64,6 +68,33 @@ def check_password(password, hashed):
     """
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
+def custom_getpass(prompt="Password: "):
+    """
+    Custom getpass function to display * for each character typed.
+    """
+    print(prompt, end='', flush=True)
+    password = ""
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch == '\n' or ch == '\r':
+                break
+            elif ch == '\x7f':  # Handle backspace
+                if len(password) > 0:
+                    password = password[:-1]
+                    sys.stdout.write('\b \b')
+                    sys.stdout.flush()
+            else:
+                password += ch
+                sys.stdout.write('*')
+                sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    print()  # Move to the next line
+    return password
 
 ### Connection with Retry ###
 def connect_weaviate_with_retries(retries=3, delay=2):
@@ -359,7 +390,7 @@ def register_user(users):
     Registers a new user and adds them to the 'users.json' file.
     """
     user_name = input("Enter your bubbly username: ")
-    password = hash_password(input("Enter your bubbly password: "))
+    password = hash_password(custom_getpass("Enter your bubbly password: "))
     result = handle_action(None, user_name, "register_user", users=users, password=password)
     if result and 'users' in result:
         bubbly_print("🎉 Welcome to the bubble universe! You’re officially a Bubblr! 🎉", "🎈")
@@ -377,7 +408,7 @@ def login_user(users):
     Logs in an existing user by validating their username and password.
     """
     user_name = input("Enter your bubbly username: ")
-    password = input("Enter your bubbly password: ")
+    password = custom_getpass("Enter your bubbly password: ")
     user_data = users.get(user_name)
 
     if user_data and check_password(password, users[user_name]):
