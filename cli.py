@@ -123,9 +123,9 @@ def pop_all_bubbles(client, user):
     Removes all bubbles from the Bubbl.ai platform after user confirmation.
     """
     bubbly_print("⚠️ Are you **really** sure you want to pop ALL the bubbles? Once they're gone, there's no bringing them back! ⚠️")
-    confirmation = input("Type 'yes' if you're absolutely certain: ")
-    if confirmation.lower() == 'yes':
-        success = handle_action(client, user, "remove_all_bubbles")
+    confirmation = input("Type 'yes' if you're absolutely certain: ").lower()
+    if confirmation == 'yes':
+        success = handle_action(client, user, "remove_all_bubbles", confirmation=confirmation)
         if success:
             bubbly_print("💥 Poof! All the bubbles are gone! Fresh air ahead! 🫧")
         else:
