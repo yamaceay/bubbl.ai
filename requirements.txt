@@ -6,3 +6,4 @@ requests
 transformers 
 psycopg2-binary 
 scikit-learn
+bcrypt
