@@ -41,7 +41,7 @@ def query_most_relevant_bubbles(client, user: str, query_text: str, limit: int =
     """
     logging.info("Querying top %d most relevant bubbles for text: '%s'...", limit, query_text)
     bubble_collection = client.collections.get("Bubble")
-    
+
     response = bubble_collection.query.near_text(
         query_text,
         filters=wvc.query.Filter.by_property("user").not_equal(user),  # Exclude current user's bubbles

@@ -1,25 +1,24 @@
-{% extends "layout.html" %}
+{% extends "base.html" %}
+
+{% block title %}Profile Lookup{% endblock %}
 
 {% block content %}
-<div class="profile-container">
-    <h2>Profile Lookup 🔍</h2>
-    <form method="POST">
-        <input type="text" name="username" placeholder="Enter username" required>
-        <button type="submit">Search Profile</button>
-    </form>
+<h2>👤 Profile Lookup</h2>
 
-    <div class="bubbles">
-        {% for bubble in user_bubbles %}
-            <div class="bubble">
-                <p>💬 {{ bubble.content }} (Category: {{ bubble.category }})</p>
-            </div>
+<form method="POST">
+    <label for="user_name">Enter Username to Search</label>
+    <input type="text" name="user_name" required><br>
+
+    <button type="submit">Search</button>
+</form>
+
+{% if profile %}
+    <h3>Profile of {{ profile.user }}</h3>
+    <p>Total Bubbles: {{ profile.total_bubbles }}</p>
+    <ul>
+        {% for bubble in profile.bubbles %}
+            <li>💬 {{ bubble.content }} (Category: {{ bubble.category }})</li>
         {% endfor %}
-    </div>
-</div>
-
-<!-- Back and Exit buttons -->
-<div class="navigation-buttons">
-    <a href="{{ url_for('main_menu', user=user) }}" class="button">⬅️ Back</a>
-    <a href="{{ url_for('index') }}" class="button">🚪 Exit</a>
-</div>
+    </ul>
+{% endif %}
 {% endblock %}

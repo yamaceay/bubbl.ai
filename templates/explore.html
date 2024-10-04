@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Explore Bubbles{% endblock %}
+
+{% block content %}
+<h2>🔍 Explore Bubbles</h2>
+
+<!-- Back to Main Menu -->
+<p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+
+<!-- Search Form -->
+<form method="POST">
+    <label for="query">Search Query</label>
+    <input type="text" name="query" value="{{ query }}" required><br>
+
+    <label for="limit">Bubbles per page</label>
+    <input type="number" name="limit" value="{{ limit }}" min="1" required><br>
+
+    <button type="submit">Search</button>
+</form>
+
+<!-- Display Results -->
+{% if query %}
+    {% if bubbles %}
+        <h3>Search Results</h3>
+        <ul>
+            {% for bubble in bubbles %}
+                <li>💬 {{ bubble.content }} (User: {{ bubble.user }}, Category: {{ bubble.category }})</li>
+            {% endfor %}
+        </ul>
+
+        <!-- Pagination Controls -->
+        <div class="pagination">
+            {% if offset > 0 %}
+                <a href="{{ url_for('explore', query=query, offset=offset - limit, limit=limit) }}">⬅️ Previous</a>
+            {% endif %}
+
+            {% if has_more %}
+                <a href="{{ url_for('explore', query=query, offset=offset + limit, limit=limit) }}">Next ➡️</a>
+            {% endif %}
+        </div>
+    {% else %}
+        <p>No results found for "{{ query }}". Try searching for something else! 🌈</p>
+    {% endif %}
+{% endif %}
+{% endblock %}

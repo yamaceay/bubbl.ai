@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Creative Self Mode{% endblock %}
+
+{% block content %}
+<h2>🎨 Creative Self Mode</h2>
+
+<!-- Back to Main Menu -->
+<p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+
+<!-- Form to Blow a New Bubble -->
+<h3>Blow a New Bubble</h3>
+<form method="POST">
+    <label for="content">What's on your mind?</label><br>
+    <textarea name="content" required></textarea><br>
+
+    <label for="category">Category</label><br>
+    <input type="text" name="category" placeholder="Technology, Life, Fun" /><br>
+
+    <button type="submit">Blow a New Bubble</button>
+</form>
+
+<!-- Form to Remove a Bubble by ID -->
+<h3>Pop an Existing Bubble</h3>
+<form method="POST">
+    <label for="bubble_id">Enter Bubble ID (UUID) to Pop</label><br>
+    <input type="text" name="bubble_id" required><br>
+
+    <button type="submit" name="remove_bubble">Pop This Bubble</button>
+</form>
+
+<!-- Display Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul>
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+{% endblock %}
