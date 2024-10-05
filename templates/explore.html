@@ -22,7 +22,11 @@
     <h3>Search Results</h3>
     <ul>
         {% for bubble in bubbles %}
-            <li>💬 {{ bubble.content }} (User: {{ bubble.user }}, Category: {{ bubble.category }})</li>
+            {% if bubble.category %}
+                <li>🎉 {{ bubble.content }} <i>by @{{ bubble.user }} in #{{ bubble.category }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
+            {% else %}
+                <li>🎉 {{ bubble.content }} <i>by @{{ bubble.user }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
+            {% endif %}
         {% endfor %}
     </ul>
 

@@ -1,3 +1,4 @@
+import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import bcrypt
 import json
@@ -5,6 +6,7 @@ from lib import Handler, connect_weaviate_client
 from lib import BubbleError, BubbleNotFoundError, InvalidUserError, DatabaseError, DuplicateBubbleError
 import os
 from functools import wraps
+import humanize
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'super_secret_key')  # Use environment variable for security
@@ -153,32 +155,45 @@ def creative_self():
     return render_template('creative_mode.html', bubbles=bubbles, offset=offset, limit=limit, has_more=has_more)
 
 # Explore Bubbles
+
 @app.route('/explore', methods=['GET', 'POST'])
 @login_required
 def explore():
     limit = 5  # Fixed limit of 5 bubbles per page
-    offset = request.args.get('offset', 0, type=int)
+    offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
     query = request.args.get('query', "")
     query_category = request.args.get('query_category', "")
 
     if request.method == 'POST':  # When the user submits a new query
         query = request.form['query']
         query_category = request.form['query_category']
-        return redirect(url_for('explore', query=query, query_category=query_category, offset=0))
+        return redirect(url_for('explore', query=query, query_category=query_category, limit=limit, offset=0))  # Reset to first page on new search
 
-    # Fetch bubbles based on query
+    # Fetch bubbles based on query, offset, and fixed limit
+    bubbles = None
     try:
         bubbles = handler.search_bubbles(query, query_category, limit, offset)
-    except DatabaseError as e:
+        
+        # Add created_at_str attribute for human-readable timestamps
+        current_time = datetime.datetime.now()
+        for bubble in bubbles:
+            created_at = bubble.get('created_at')
+            if created_at:
+                # Convert the `created_at` to a datetime object
+                created_at_dt = datetime.datetime.fromisoformat(created_at)
+                # Calculate the human-readable relative time
+                bubble['created_at_str'] = humanize.naturaltime(current_time - created_at_dt)
+            else:
+                bubble['created_at_str'] = "Unknown time"
+    except ValueError as e:
         flash_message(str(e), "error")
         return redirect(url_for('explore'))
 
-    # Pagination logic
+    # Determine if there are more bubbles for the "Next" page
     next_offset = offset + limit
     has_more = handler.search_bubbles(query, query_category, 1, next_offset) if query or query_category else True
 
     return render_template('explore.html', bubbles=bubbles, query=query, query_category=query_category, offset=offset, limit=limit, has_more=has_more)
-
 
 # Find Like-Minded Bubblers
 @app.route('/find_like_minded', methods=['GET', 'POST'])
