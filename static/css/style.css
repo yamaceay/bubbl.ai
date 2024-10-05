@@ -6,7 +6,7 @@
 }
 
 body {
-    font-family: 'Comic Sans MS', 'Arial', sans-serif; /* More playful fonts */
+    font-family: 'Comic Sans MS', 'Arial', sans-serif;
     background-color: #e3f2fd;
     color: #333;
     line-height: 1.6;
@@ -36,6 +36,7 @@ body {
     background-color: #bbdefb;
     border-radius: 50%;
     opacity: 0.5;
+    pointer-events: none;  /* Make bubble non-interactive */
 }
 
 .container::after {
@@ -48,6 +49,7 @@ body {
     background-color: #90caf9;
     border-radius: 50%;
     opacity: 0.7;
+    pointer-events: none;  /* Make bubble non-interactive */
 }
 
 /* Header */
