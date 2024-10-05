@@ -1,3 +1,4 @@
+import datetime
 import os
 import logging
 
@@ -22,6 +23,39 @@ if not OPENAI_API_KEY:
 
 # Initialize OpenAI API Key
 openai.api_key = OPENAI_API_KEY
+
+class BubbleError(Exception):
+    """Base class for all bubble-related exceptions."""
+    pass
+
+
+class DuplicateBubbleError(BubbleError):
+    """Raised when trying to insert a duplicate bubble."""
+    def __init__(self, message="Bubble already exists with the same content."):
+        self.message = message
+        super().__init__(self.message)
+
+
+class BubbleNotFoundError(BubbleError):
+    """Raised when trying to remove or query a non-existent bubble."""
+    def __init__(self, message="Bubble not found."):
+        self.message = message
+        super().__init__(self.message)
+
+
+class InvalidUserError(BubbleError):
+    """Raised when a user attempts an unauthorized action."""
+    def __init__(self, message="Unauthorized action by the user."):
+        self.message = message
+        super().__init__(self.message)
+
+
+class DatabaseError(BubbleError):
+    """Raised when a database operation fails."""
+    def __init__(self, message="A database error occurred. Please try again later."):
+        self.message = message
+        super().__init__(self.message)
+
 
 def connect_weaviate_client():
     """
@@ -78,6 +112,7 @@ def perform_query(client, query_user: str = "", not_query_user: str = "", query_
                 filters=filters,
                 limit=limit,
                 offset=offset,
+                sort=wvc.query.Sort.by_property(name="created_at", ascending=False),
             )
         except Exception as e:
             logging.error("An error occurred during fetch_objects query execution: %s", e)
@@ -101,7 +136,7 @@ def query_most_relevant_bubbles(client, user: str, query_text: str = "", query_c
             "content": obj.properties.get('content'),
             "user": obj.properties.get('user'),
             "category": obj.properties.get('category'),
-            "created_at": obj.properties.get('created_at'),  # Assuming 'created_at
+            "created_at": obj.properties.get('created_at'),  # Assuming 'created_at' is a property
             "uuid": obj.uuid
         }
         bubbles.append(bubble_data)
@@ -211,51 +246,46 @@ def compute_user_similarity(user_embeddings: Dict[str, np.ndarray], query_embedd
 def insert_bubbles(client, bubbles: List[Dict]):
     """
     Insert bubbles into the Weaviate database.
+    Raises DuplicateBubbleError if a bubble with the same content exists.
     """
     logging.info("Inserting bubbles into the database...")
     
-    objects = []
     collection = client.collections.get("Bubble")
 
     for bubble in bubbles:
-        obj = {
-            "class": "Bubble",
-            "properties": bubble
-        }
-        objects.append(obj)
-
         result = collection.query.fetch_objects(
-            filters=wvc.query.Filter.by_property("content").equal(bubble["content"])
+            filters=wvc.query.Filter.by_property("content").equal(bubble["content"]),
+            sort=wvc.query.Sort.by_property(name="created_at", ascending=False),
         )
         if result.objects:
-            logging.error("Bubble with content '%s' already exists in the database.", bubbles[0]["content"])
-            return None
-
+            raise DuplicateBubbleError(f"Bubble with content '{bubble['content']}' already exists.")
     try:
-        response = collection.data.insert_many(
-            [wvc.data.DataObject(properties=bubble) for bubble in bubbles]
-        )
+        objects = [wvc.data.DataObject(properties={**bubble, "created_at": datetime.datetime.now().isoformat()}) for bubble in bubbles]
+        response = collection.data.insert_many(objects)
         return response.uuids
     except Exception as e:
         logging.error("An error occurred: %s", e)
-    return None
+        raise DatabaseError("Failed to insert bubbles into the database.")
 
 def remove_bubble(client, user: str, uuid: str):
     """
     Remove a bubble from the Weaviate database by UUID.
+    Raises BubbleNotFoundError if the bubble is not found or does not belong to the user.
     """
     logging.info("Removing bubble with UUID %s...", uuid)
     old_bubble = client.collections.get("Bubble").query.fetch_object_by_id(uuid)
-    if old_bubble and old_bubble.properties.get("user") != user:
-        logging.error("User %s does not have permission to delete bubble with UUID %s.", user, uuid)
-        return False
+    if not old_bubble:
+        raise BubbleNotFoundError(f"No bubble found with UUID {uuid}.")
+    if old_bubble.properties.get("user") != user:
+        raise InvalidUserError("You do not have permission to delete this bubble.")
+
     try:
-        # Deleting the object using the UUID
         client.collections.get("Bubble").data.delete_by_id(uuid)
         logging.info("Bubble with UUID %s removed successfully.", uuid)
         return True
     except Exception as e:
         logging.error("An unexpected error occurred: %s", e)
+        raise DatabaseError("Failed to remove the bubble.")
 
 def perform_similarity_search_bubbles(client, user: str, query_text: str, query_category: str, limit: int, offset: int):
     """
@@ -293,7 +323,8 @@ def create_bubble_schema(client):
             properties=[
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="user", data_type=wvc.config.DataType.TEXT),
-                wvc.config.Property(name="category", data_type=wvc.config.DataType.TEXT)
+                wvc.config.Property(name="category", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE_TIME)
             ]
         )
         logging.info("Bubble collection created")
@@ -334,14 +365,16 @@ def insert_bubbles_from_json(client, json_data: List[Dict]):
     Insert bubbles into the Weaviate database from a provided JSON data.
     """
     try:
+        collection = client.collections.get("Bubble")
         # Insert bubbles in bulk using insert_many
-        response = client.collections.get("Bubble").data.insert_many(
-            [wvc.data.DataObject(properties=bubble) for bubble in json_data]
-        )
+        with collection.batch.dynamic() as batch:
+            for bubble in json_data:
+                created_at = datetime.datetime.now().isoformat()
+                bubble['created_at'] = created_at
+                batch.add_object(properties=bubble)
 
         # Retrieve and print all generated UUIDs
-        if response.uuids:
-            return response.uuids
+        return True
     except Exception as e:
         logging.error("An error occurred: %s", e)
     return None

@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import bcrypt
 import json
 from lib import Handler, connect_weaviate_client
+from lib import BubbleError, BubbleNotFoundError, InvalidUserError, DatabaseError, DuplicateBubbleError
 import os
 from functools import wraps
 
@@ -99,30 +100,29 @@ def index():
 def menu():
     return render_template('menu.html')
 
+# Creative Mode
 @app.route('/creative_self', methods=['GET', 'POST'])
 @login_required
 def creative_self():
     limit = 5  # Fixed limit of 5 bubbles per page
-    offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
+    offset = request.args.get('offset', 0, type=int)
     user_name = session['user']  # Get the logged-in user's name
-    has_more = True  # Default to True
-    bubbles = None
 
     # Fetch the user's bubbles for display
     try:
         bubbles = handler.query_user_profile(user_name, "", "", limit, offset)
-    except ValueError as e:
+    except BubbleError as e:
         flash_message(str(e), "error")
         return redirect(url_for('menu'))
 
     # Handle bubble removal
     if request.method == 'POST' and 'remove_bubble' in request.form:
-        bubble_id = request.form['bubble_id']  # Fetch the bubble_id from the form
-        success = handler.remove_bubble(bubble_id)
-        if success:
+        bubble_id = request.form['bubble_id']
+        try:
+            success = handler.remove_bubble(bubble_id)
             flash_message("✨ Bubble has been successfully popped! 🎉", "success")
-        else:
-            flash_message(f"😕 Could not find or remove the bubble with ID {bubble_id}. It may have floated away. 🧐", "error")
+        except (BubbleNotFoundError, InvalidUserError, DatabaseError) as e:
+            flash_message(str(e), "error")
         return redirect(url_for('creative_self'))
 
     # Handle bubble creation (writing new bubbles)
@@ -132,18 +132,19 @@ def creative_self():
         if not content:
             flash_message("Content cannot be empty! 🧐", "error")
         else:
-            bubble = [{"content": content, "user": user_name, "category": category}]
-            result = handler.insert_bubbles(bubble)
-            if result:
+            try:
+                bubble = [{"content": content, "user": user_name, "category": category}]
+                result = handler.insert_bubbles(bubble)
                 flash_message("✨ Your bubble has been blown! 🎉", "success")
-            else:
-                flash_message("Uh-oh! Something went wrong while creating the bubble. Try again! 🌬️", "error")
+            except DuplicateBubbleError as e:
+                flash_message(str(e), "error")
+            except DatabaseError as e:
+                flash_message("Uh-oh! Something went wrong while creating the bubble. 🌬️", "error")
         return redirect(url_for('creative_self'))
 
-    # Determine if there are more bubbles for pagination
+    # Render the creative self page with bubbles and pagination
     next_offset = offset + limit
     has_more = handler.query_user_profile(user_name, "", "", 1, next_offset)
-
     return render_template('creative_mode.html', bubbles=bubbles, offset=offset, limit=limit, has_more=has_more)
 
 # Explore Bubbles
@@ -151,28 +152,28 @@ def creative_self():
 @login_required
 def explore():
     limit = 5  # Fixed limit of 5 bubbles per page
-    offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
+    offset = request.args.get('offset', 0, type=int)
     query = request.args.get('query', "")
     query_category = request.args.get('query_category', "")
 
     if request.method == 'POST':  # When the user submits a new query
         query = request.form['query']
         query_category = request.form['query_category']
-        return redirect(url_for('explore', query=query, query_category=query_category, limit=limit, offset=0))  # Reset to first page on new search
+        return redirect(url_for('explore', query=query, query_category=query_category, offset=0))
 
-    # Fetch bubbles based on query, offset, and fixed limit
-    bubbles = None
+    # Fetch bubbles based on query
     try:
         bubbles = handler.search_bubbles(query, query_category, limit, offset)
-    except ValueError as e:
+    except DatabaseError as e:
         flash_message(str(e), "error")
         return redirect(url_for('explore'))
 
-    # Determine if there are more bubbles for the "Next" page
+    # Pagination logic
     next_offset = offset + limit
     has_more = handler.search_bubbles(query, query_category, 1, next_offset) if query or query_category else True
 
     return render_template('explore.html', bubbles=bubbles, query=query, query_category=query_category, offset=offset, limit=limit, has_more=has_more)
+
 
 # Find Like-Minded Bubblers
 @app.route('/find_like_minded', methods=['GET', 'POST'])
