@@ -120,7 +120,7 @@ def creative_self():
         bubble_id = request.form['bubble_id']  # Fetch the bubble_id from the form
         success = handler.remove_bubble(bubble_id)
         if success:
-            flash_message(f"✨ Bubble with ID {bubble_id} has been successfully popped! 🎉", "success")
+            flash_message("✨ Bubble has been successfully popped! 🎉", "success")
         else:
             flash_message(f"😕 Could not find or remove the bubble with ID {bubble_id}. It may have floated away. 🧐", "error")
         return redirect(url_for('creative_self'))
@@ -135,7 +135,7 @@ def creative_self():
             bubble = [{"content": content, "user": user_name, "category": category}]
             result = handler.insert_bubbles(bubble)
             if result:
-                flash_message(f"✨ Your bubble has been blown with ID(s): {result}! 🎉", "success")
+                flash_message("✨ Your bubble has been blown! 🎉", "success")
             else:
                 flash_message("Uh-oh! Something went wrong while creating the bubble. Try again! 🌬️", "error")
         return redirect(url_for('creative_self'))
@@ -224,7 +224,7 @@ def developer_mode():
                     json_data = json.load(f)
                 result = handler.insert_bubbles_from_json(json_data)
                 if result:
-                    flash_message(f"✨ Bubbles successfully blown! Bubble IDs: {result} 🎉", "success")
+                    flash_message("✨ Bubbles successfully blown! 🎉", "success")
                 else:
                     flash_message("Something went wrong. Try again! 🌬️", "error")
             except FileNotFoundError:

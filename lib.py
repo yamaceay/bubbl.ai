@@ -215,6 +215,8 @@ def insert_bubbles(client, bubbles: List[Dict]):
     logging.info("Inserting bubbles into the database...")
     
     objects = []
+    collection = client.collections.get("Bubble")
+
     for bubble in bubbles:
         obj = {
             "class": "Bubble",
@@ -222,8 +224,15 @@ def insert_bubbles(client, bubbles: List[Dict]):
         }
         objects.append(obj)
 
+        result = collection.query.fetch_objects(
+            filters=wvc.query.Filter.by_property("content").equal(bubble["content"])
+        )
+        if result.objects:
+            logging.error("Bubble with content '%s' already exists in the database.", bubbles[0]["content"])
+            return None
+
     try:
-        response = client.collections.get("Bubble").data.insert_many(
+        response = collection.data.insert_many(
             [wvc.data.DataObject(properties=bubble) for bubble in bubbles]
         )
         return response.uuids
