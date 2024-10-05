@@ -125,18 +125,18 @@ def creative_self():
 @app.route('/explore', methods=['GET', 'POST'])
 @login_required
 def explore():
-    limit, offset = handle_pagination(request)
+    limit = 5  # Fixed limit of 5 bubbles per page
+    offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
     query = request.args.get('query', "")
-    
+
     if request.method == 'POST':  # When the user submits a new query
         query = request.form['query']
-        limit = int(request.form['limit'])
         if not query.strip():
             flash_message("Search query cannot be empty!", "error")
             return redirect(url_for('explore'))
-        return redirect(url_for('explore', query=query, offset=0, limit=limit))  # Reset to first page on new search
+        return redirect(url_for('explore', query=query, offset=0))  # Reset to first page on new search
 
-    # Fetch bubbles based on query, offset, and limit
+    # Fetch bubbles based on query, offset, and fixed limit
     bubbles = None
     if query:
         try:
@@ -147,9 +147,9 @@ def explore():
 
     # Determine if there are more bubbles for the "Next" page
     next_offset = offset + limit
-    has_more = handler.search_bubbles(query, 1, next_offset) if query else False
+    has_more = handler.search_bubbles(query, 1, next_offset) if query else True
 
-    return render_template('explore.html', bubbles=bubbles, query=query, offset=offset, limit=limit, has_more=has_more)
+    return render_template('explore.html', bubbles=bubbles, query=query, offset=offset, has_more=has_more)
 
 # Developer Mode
 @app.route('/developer', methods=['GET', 'POST'])
@@ -177,16 +177,13 @@ def developer_mode():
 @app.route('/profile_lookup', methods=['GET', 'POST'])
 @login_required
 def profile_lookup():
-    profile = None
-    query_text = ""  # Default query text
-    query_category = ""  # Default category filter
-    limit = 5  # Default limit (number of bubbles per page)
+    limit = 5  # Fixed limit of 5 bubbles per page
     offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
-    limit = request.args.get('limit', limit, type=int)  # Allow custom limit via URL parameter
     query_text = request.args.get('query_text', "")  # Persist the query text across pages
     query_category = request.args.get('query_category', "")  # Persist the category filter across pages
     user_name = request.args.get('user_name', "")  # Persist the user name across pages
     has_more = True  # Default to True
+    profile = None
 
     if request.method == 'POST':  # When the user submits new query or category filters
         user_name = request.form['user_name']
@@ -195,9 +192,9 @@ def profile_lookup():
         if not user_name.strip():
             flash_message("Username cannot be empty!", "error")
             return redirect(url_for('profile_lookup'))
-        return redirect(url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=0, limit=limit))
+        return redirect(url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=0))
 
-    # Fetch user profile bubbles based on user_name, query text, category filter, offset, and limit
+    # Fetch user profile bubbles based on user_name, query text, category filter, offset, and fixed limit
     if user_name:
         try:
             profile = handler.query_user_profile(user_name, query_text, query_category, limit, offset)
@@ -209,7 +206,7 @@ def profile_lookup():
     next_offset = offset + limit
     has_more = handler.query_user_profile(user_name, query_text, query_category, 1, next_offset) if user_name else False
 
-    return render_template('profile_lookup.html', profile=profile, user_name=user_name, query_text=query_text, query_category=query_category, offset=offset, limit=limit, has_more=has_more)
+    return render_template('profile_lookup.html', profile=profile, user_name=user_name, query_text=query_text, query_category=query_category, offset=offset, has_more=has_more)
 
 # Logout
 @app.route('/logout')

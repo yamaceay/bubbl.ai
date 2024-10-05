@@ -19,9 +19,6 @@
     <label for="query_category">Filter by Category (optional)</label>
     <input type="text" name="query_category" value="{{ query_category }}"><br>
 
-    <label for="limit">Bubbles per page</label>
-    <input type="number" name="limit" value="{{ limit }}" min="1" required><br>
-
     <button type="submit">Search</button>
 </form>
 
@@ -37,11 +34,11 @@
     <!-- Pagination Controls -->
     <div class="pagination">
         {% if offset > 0 %}
-            <a href="{{ url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset - limit, limit=limit) }}">⬅️ Previous</a>
+            <a href="{{ url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset - 5) }}">⬅️ Previous</a>
         {% endif %}
 
         {% if has_more %}
-            <a href="{{ url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset + limit, limit=limit) }}">Next ➡️</a>
+            <a href="{{ url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset + 5) }}">Next ➡️</a>
         {% endif %}
     </div>
 {% endif %}
