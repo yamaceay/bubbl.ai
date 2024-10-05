@@ -302,25 +302,31 @@ h3 {
 /* Red Cross Button for Deleting Bubbles */
 .delete-form {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 15px;
+    right: 15px;
 }
 
 .delete-bubble {
-    background-color: #d32f2f;
+    background-color: #f44336; /* Lighter red */
     color: white;
     border: none;
     border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    font-size: 1.2em;
+    width: 35px;
+    height: 35px;
+    font-size: 1.4em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Small shadow for a raised effect */
 }
 
 .delete-bubble:hover {
-    background-color: #c62828;
+    background-color: #b71c1c; /* Darker red for drastic change on hover */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Enhance the shadow on hover */
 }
+
 
 .about-image {
     float: right;                 /* Float the image to the right */

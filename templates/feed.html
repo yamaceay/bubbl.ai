@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Explore Bubbles{% endblock %}
+{% block header %}🔍 Bubble Feed{% endblock %}
 
 {% block content %}
-<h2>🔍 Explore Bubbles</h2>
 <p>Search for bubbles by content, user, or category.</p>
 
 <!-- Search Form -->
@@ -19,25 +18,27 @@
 
 <!-- Display Results -->
 {% if bubbles %}
-    <h3>Search Results</h3>
-    <ul>
+<h3>Search Results</h3>
+    <div class="bubble-list">
         {% for bubble in bubbles %}
-            {% if bubble.category %}
-                <li>🎉 {{ bubble.content }} <i>by @{{ bubble.user }} in #{{ bubble.category }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
-            {% else %}
-                <li>🎉 {{ bubble.content }} <i>by @{{ bubble.user }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
-            {% endif %}
+            <div class="bubble-item">
+                {% if bubble.category %}
+                    <li>🎉 {{ bubble.content }} <i>by @{{ bubble.user }} in #{{ bubble.category }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
+                {% else %}
+                    <li>🎉 {{ bubble.content }} <i>by @{{ bubble.user }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
+                {% endif %}
+            </div>
         {% endfor %}
-    </ul>
+    </div>
 
     <!-- Pagination Controls -->
     <div class="pagination">
         {% if offset > 0 %}
-            <a href="{{ url_for('explore', query=query, query_category=query_category, limit=limit, offset=offset - limit) }}">⬅️ Previous</a>
+            <a href="{{ url_for('feed', query=query, query_category=query_category, limit=limit, offset=offset - limit) }}">⬅️ Previous</a>
         {% endif %}
 
         {% if has_more %}
-            <a href="{{ url_for('explore', query=query, query_category=query_category, limit=limit, offset=offset + limit) }}">Next ➡️</a>
+            <a href="{{ url_for('feed', query=query, query_category=query_category, limit=limit, offset=offset + limit) }}">Next ➡️</a>
         {% endif %}
     </div>
 {% endif %}

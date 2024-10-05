@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Profile Lookup{% endblock %}
+{% block header %}👤 Search Users{% endblock %}
 
 {% block content %}
-<h2>👤 Profile Lookup</h2>
 <p>Search for user profiles by username.</p>
 
 <!-- Search Form -->
@@ -23,24 +22,26 @@
 <!-- Display User Profile Bubbles -->
 {% if profile %}
     <h3>Bubbles for User: {{ user_name }}</h3>
-    <ul>
+    <div class="bubble-list">
         {% for bubble in profile.bubbles %}
-            {% if bubble.category %}
-                <li>🎉 {{ bubble.content }} <i>in #{{ bubble.category }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
-            {% else %}
-                <li>🎉 {{ bubble.content }} <br> <small>{{ bubble.created_at_str }}</small></li>
-            {% endif %}
+            <div class="bubble-item">
+                {% if bubble.category %}
+                    <li>🎉 {{ bubble.content }} <i>in #{{ bubble.category }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
+                {% else %}
+                    <li>🎉 {{ bubble.content }} <br> <small>{{ bubble.created_at_str }}</small></li>
+                {% endif %}
+            </div>
         {% endfor %}
-    </ul>
+    </div>
 
     <!-- Pagination Controls -->
     <div class="pagination">
         {% if offset > 0 %}
-            <a href="{{ url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset - 5) }}">⬅️ Previous</a>
+            <a href="{{ url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset - 5) }}">⬅️ Previous</a>
         {% endif %}
 
         {% if has_more %}
-            <a href="{{ url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset + 5) }}">Next ➡️</a>
+            <a href="{{ url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset + 5) }}">Next ➡️</a>
         {% endif %}
     </div>
 {% endif %}

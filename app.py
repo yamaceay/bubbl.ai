@@ -105,7 +105,7 @@ def index():
         elif action == 'login':
             if username in users and check_password(password, users[username]):
                 session['user'] = username
-                flash_message("🎉 Welcome back! 🎉", "success")
+                flash_message(f"🎉 Welcome, {username}! 🎉", "success")
                 return redirect(url_for('menu'))
             elif username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
                 # Admin login
@@ -129,16 +129,17 @@ def about():
     return render_template('about.html')
 
 # Creative Mode
-@app.route('/creative_self', methods=['GET', 'POST'])
+@app.route('/me', methods=['GET', 'POST'])
 @login_required
-def creative_self():
+def me():
     limit = 5  # Fixed limit of 5 bubbles per page
     offset = request.args.get('offset', 0, type=int)
     user_name = session['user']  # Get the logged-in user's name
 
     # Fetch the user's bubbles for display
     try:
-        bubbles = handler.query_user_profile(user_name, "", "", limit, offset)
+        profile = handler.query_user_profile(user_name, "", "", limit, offset)
+        profile['bubbles'] = bubble_add_time(profile.get('bubbles'))
     except BubbleError as e:
         flash_message(str(e), "error")
         return redirect(url_for('menu'))
@@ -151,7 +152,7 @@ def creative_self():
             flash_message("✨ Bubble has been successfully popped! 🎉", "success")
         except (BubbleNotFoundError, InvalidUserError, DatabaseError) as e:
             flash_message(str(e), "error")
-        return redirect(url_for('creative_self'))
+        return redirect(url_for('me'))
 
     # Handle bubble creation (writing new bubbles)
     if request.method == 'POST' and 'create_bubble' in request.form:
@@ -168,17 +169,17 @@ def creative_self():
                 flash_message(str(e), "error")
             except DatabaseError as e:
                 flash_message("Uh-oh! Something went wrong while creating the bubble. 🌬️", "error")
-        return redirect(url_for('creative_self'))
+        return redirect(url_for('me'))
 
     # Render the creative self page with bubbles and pagination
     next_offset = offset + limit
     has_more = handler.query_user_profile(user_name, "", "", 1, next_offset)
-    return render_template('creative_mode.html', bubbles=bubbles, offset=offset, limit=limit, has_more=has_more)
+    return render_template('me.html', profile=profile, offset=offset, limit=limit, has_more=has_more)
 
 # Explore Bubbles
-@app.route('/explore', methods=['GET', 'POST'])
+@app.route('/feed', methods=['GET', 'POST'])
 @login_required
-def explore():
+def feed():
     limit = 5  # Fixed limit of 5 bubbles per page
     offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
     query = request.args.get('query', "")
@@ -187,7 +188,7 @@ def explore():
     if request.method == 'POST':  # When the user submits a new query
         query = request.form['query']
         query_category = request.form['query_category']
-        return redirect(url_for('explore', query=query, query_category=query_category, limit=limit, offset=0))  # Reset to first page on new search
+        return redirect(url_for('feed', query=query, query_category=query_category, limit=limit, offset=0))  # Reset to first page on new search
 
     # Fetch bubbles based on query, offset, and fixed limit
     bubbles = None
@@ -196,18 +197,18 @@ def explore():
         bubbles = bubble_add_time(bubbles)
     except ValueError as e:
         flash_message(str(e), "error")
-        return redirect(url_for('explore'))
+        return redirect(url_for('feed'))
 
     # Determine if there are more bubbles for the "Next" page
     next_offset = offset + limit
     has_more = handler.search_bubbles(query, query_category, 1, next_offset) if query or query_category else True
 
-    return render_template('explore.html', bubbles=bubbles, query=query, query_category=query_category, offset=offset, limit=limit, has_more=has_more)
+    return render_template('feed.html', bubbles=bubbles, query=query, query_category=query_category, offset=offset, limit=limit, has_more=has_more)
 
 # Find Like-Minded Bubblers
-@app.route('/find_like_minded', methods=['GET', 'POST'])
+@app.route('/rank_users', methods=['GET', 'POST'])
 @login_required
-def find_like_minded():
+def rank_users():
     query_text = ""
     query_category = ""
     similar_users = None
@@ -241,7 +242,7 @@ def find_like_minded():
 
     # Render the result after the task is done
     return render_template(
-        'find_like_minded.html',
+        'rank_users.html',
         query_text=query_text,
         query_category=query_category,
         similar_users=similar_users,
@@ -251,9 +252,9 @@ def find_like_minded():
     )
 
 # Developer Mode (restricted to admin)
-@app.route('/admin_page', methods=['GET', 'POST'])
+@app.route('/admin', methods=['GET', 'POST'])
 @admin_required  # Ensure only the admin can access this route
-def admin_page():
+def admin():
     if request.method == 'POST':
         if 'pop_all' in request.form:  # Handle the logic for popping all bubbles
             handler.remove_all_bubbles(confirmation="yes")
@@ -270,12 +271,12 @@ def admin_page():
                     flash_message("Something went wrong. Try again! 🌬️", "error")
             except FileNotFoundError:
                 flash_message("File not found. 🚫", "error")
-    return render_template('admin_page.html')
+    return render_template('admin.html')
 
 # Profile Lookup Mode with Filters and Pagination
-@app.route('/profile_lookup', methods=['GET', 'POST'])
+@app.route('/users', methods=['GET', 'POST'])
 @login_required
-def profile_lookup():
+def users():
     limit = 5  # Fixed limit of 5 bubbles per page
     offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
     query_text = request.args.get('query_text', "")  # Persist the query text across pages
@@ -290,8 +291,8 @@ def profile_lookup():
         query_category = request.form['query_category'].strip()
         if not user_name.strip():
             flash_message("Username cannot be empty!", "error")
-            return redirect(url_for('profile_lookup'))
-        return redirect(url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=0))
+            return redirect(url_for('users'))
+        return redirect(url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=0))
 
     # Fetch user profile bubbles based on user_name, query text, category filter, offset, and fixed limit
     if user_name:
@@ -300,13 +301,13 @@ def profile_lookup():
             profile['bubbles'] = bubble_add_time(profile.get('bubbles'))
         except ValueError as e:
             flash_message(str(e), "error")
-            return redirect(url_for('profile_lookup'))
+            return redirect(url_for('users'))
 
     # Determine if there are more bubbles for the "Next" page
     next_offset = offset + limit
     has_more = handler.query_user_profile(user_name, query_text, query_category, 1, next_offset) if user_name else False
 
-    return render_template('profile_lookup.html', profile=profile, user_name=user_name, query_text=query_text, query_category=query_category, offset=offset, has_more=has_more)
+    return render_template('users.html', profile=profile, user_name=user_name, query_text=query_text, query_category=query_category, offset=offset, has_more=has_more)
 
 # Logout
 @app.route('/logout')

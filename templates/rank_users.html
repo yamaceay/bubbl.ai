@@ -1,13 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Find Like-Minded Bubblers{% endblock %}
+{% block header %}🫂 Rank Users{% endblock %}
 
 {% block content %}
-<h2>🫂 Find Like-Minded Bubblers</h2>
 <p>Find other Bubblers who share similar thoughts and bubbles!</p>
 
 <!-- Search Form -->
-<form method="POST" action="{{ url_for('find_like_minded') }}">
+<form method="POST" action="{{ url_for('rank_users') }}">
     <label for="query_text">Search Query (optional)💬</label>
     <input type="text" name="query_text" value="{{ query_text }}" placeholder="Type your search query">
     <label for="query_category">Filter by Category (optional)</label>
@@ -34,10 +33,10 @@
     <!-- Pagination Controls -->
     <div class="pagination">
         {% if offset > 0 %}
-        <a href="{{ url_for('find_like_minded', query_text=query_text, query_category=query_category, offset=offset - limit) }}">⬅️ Previous</a>
+        <a href="{{ url_for('rank_users', query_text=query_text, query_category=query_category, offset=offset - limit) }}">⬅️ Previous</a>
         {% endif %}
         {% if has_more %}
-        <a href="{{ url_for('find_like_minded', query_text=query_text, query_category=query_category, offset=offset + limit) }}">Next ➡️</a>
+        <a href="{{ url_for('rank_users', query_text=query_text, query_category=query_category, offset=offset + limit) }}">Next ➡️</a>
         {% endif %}
     </div>
 
@@ -45,7 +44,7 @@
     <p>No similar Bubblers found for your search. Try a different query! 🌈</p>
     {% endif %}
 {% else %}
-<p>You have no bubbles yet to summarize! Create some bubbles in the <a href="{{ url_for('creative_self') }}">Creative Self Mode</a>.</p>
+<p>You have no bubbles yet to summarize! Create some bubbles in the <a href="{{ url_for('me') }}">Creative Self Mode</a>.</p>
 {% endif %}
 
 <footer>
