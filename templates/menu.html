@@ -1,17 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Main Menu</title>
-</head>
-<body>
-    <h1>Main Menu</h1>
-    <ul>
-        <li><a href="{{ url_for('creative_self') }}">🎨 Creative Self Mode</a></li>
-        <li><a href="{{ url_for('explore') }}">🔍 Explore Bubbles</a></li>
-        <li><a href="{{ url_for('developer_mode') }}">👨‍💻 Developer Mode</a></li>
-        <li><a href="{{ url_for('profile_lookup') }}">👤 Profile Lookup</a></li>
-        <li><a href="{{ url_for('logout') }}">🚪 Log Out</a></li>
-    </ul>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Main Menu{% endblock %}
+
+{% block content %}
+<div class="button-group">
+    <a href="{{ url_for('creative_self') }}">
+        <button>🎨 Creative Self Mode</button>
+    </a>
+    <a href="{{ url_for('explore') }}">
+        <button>🔍 Explore Bubbles</button>
+    </a>
+    <a href="{{ url_for('profile_lookup') }}">
+        <button>👤 Profile Lookup</button>
+    </a>
+    <a href="{{ url_for('developer_mode') }}">
+        <button>👨‍💻 Developer Mode</button>
+    </a>
+</div>
+
+<footer>
+    <p><a href="{{ url_for('logout') }}">🚪 Log out</a></p>
+</footer>
+{% endblock %}

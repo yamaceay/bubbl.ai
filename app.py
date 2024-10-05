@@ -157,7 +157,7 @@ def explore():
 def developer_mode():
     if request.method == 'POST':
         if 'pop_all' in request.form:  # Handle the logic for popping all bubbles
-            handler.remove_all_bubbles()
+            handler.remove_all_bubbles(confirmation="yes")
             flash_message("💥 Poof! All the bubbles are gone! Fresh air ahead! 🫧", "success")
         elif 'insert_bubbles' in request.form:  # Handle the logic for inserting bubbles from JSON
             json_file = request.form['json_file']
