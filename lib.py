@@ -2,12 +2,13 @@ import datetime
 import os
 import logging
 
+from typing import List, Dict, Optional, Union
 import numpy as np
 import openai
 import weaviate
 import weaviate.classes as wvc
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Dict, Optional, Union
+import humanize
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename="messages.log")
@@ -379,6 +380,20 @@ def insert_bubbles_from_json(client, json_data: List[Dict]):
     except Exception as e:
         logging.error("An error occurred: %s", e)
     return None
+
+def bubble_add_time(bubbles: List[Dict]) -> List[Dict]:
+    # Add created_at_str attribute for human-readable timestamps
+    current_time = datetime.datetime.now()
+    for bubble in bubbles:
+        created_at = bubble.get('created_at')
+        if created_at:
+            # Convert the `created_at` to a datetime object
+            created_at_dt = datetime.datetime.fromisoformat(created_at)
+            # Calculate the human-readable relative time
+            bubble['created_at_str'] = humanize.naturaltime(current_time - created_at_dt)
+        else:
+            bubble['created_at_str'] = "Unknown time"
+    return bubbles
 
 class Handler:
     """

@@ -25,7 +25,11 @@
     <h3>Bubbles for User: {{ user_name }}</h3>
     <ul>
         {% for bubble in profile.bubbles %}
-            <li>💬 {{ bubble.content }} (Category: {{ bubble.category }})</li>
+            {% if bubble.category %}
+                <li>🎉 {{ bubble.content }} <i>in #{{ bubble.category }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
+            {% else %}
+                <li>🎉 {{ bubble.content }} <br> <small>{{ bubble.created_at_str }}</small></li>
+            {% endif %}
         {% endfor %}
     </ul>
 

@@ -1,15 +1,13 @@
 import os
-import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import bcrypt
 import json
-from lib import Handler, connect_weaviate_client
+from lib import Handler, connect_weaviate_client, bubble_add_time
 from lib import BubbleError, BubbleNotFoundError, InvalidUserError, DatabaseError, DuplicateBubbleError
 from functools import wraps
-import humanize
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'super_secret_key')  # Use environment variable for security
@@ -158,7 +156,6 @@ def creative_self():
     return render_template('creative_mode.html', bubbles=bubbles, offset=offset, limit=limit, has_more=has_more)
 
 # Explore Bubbles
-
 @app.route('/explore', methods=['GET', 'POST'])
 @login_required
 def explore():
@@ -176,18 +173,7 @@ def explore():
     bubbles = None
     try:
         bubbles = handler.search_bubbles(query, query_category, limit, offset)
-        
-        # Add created_at_str attribute for human-readable timestamps
-        current_time = datetime.datetime.now()
-        for bubble in bubbles:
-            created_at = bubble.get('created_at')
-            if created_at:
-                # Convert the `created_at` to a datetime object
-                created_at_dt = datetime.datetime.fromisoformat(created_at)
-                # Calculate the human-readable relative time
-                bubble['created_at_str'] = humanize.naturaltime(current_time - created_at_dt)
-            else:
-                bubble['created_at_str'] = "Unknown time"
+        bubbles = bubble_add_time(bubbles)
     except ValueError as e:
         flash_message(str(e), "error")
         return redirect(url_for('explore'))
@@ -205,8 +191,10 @@ def find_like_minded():
     query_text = ""
     query_category = ""
     similar_users = None
+    limit_bubbles = 50  # Limit the number of bubbles to summarize for each user
+    limit_bubble_user = 4 # Limit the number of bubbles to summarize for the current user
     limit = 5  # Fixed limit of 5 similar users per page
-    offset = request.args.get('offset', 0, type=int)  # Default offset for pagination
+    offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
     has_more = False
 
     if request.method == 'POST':
@@ -214,23 +202,33 @@ def find_like_minded():
         query_text = request.form['query_text'].strip()
         query_category = request.form['query_category'].strip()
 
-    # Call the handler to find similar users based on the query
+    # Define a task to run in the background for finding similar users
     try:
-        similar_users = handler.search_users_by_profile(query_text, query_category, limit, offset)
+        similar_users = handler.search_users_by_profile(query_text, query_category, limit_bubbles, limit_bubble_user)
     except ValueError as e:
         flash_message(str(e), "error")
-        return redirect(url_for('find_like_minded'))
+        return None
 
     # If the result is None, it means the current user has no bubbles yet.
     if similar_users is None:
         flash_message("You have no bubbles yet to summarize! Create some bubbles first.", "info")
 
-    # Check if there are more users beyond the current limit
+    similar_users = similar_users[offset:offset + limit] if similar_users else []
+
+    # Check if there are more users beyond the current limit for pagination
     next_offset = offset + limit
     has_more = handler.search_users_by_profile(query_text, query_category, 1, next_offset)
 
-    return render_template('find_like_minded.html', query_text=query_text, query_category=query_category, similar_users=similar_users, offset=offset, limit=limit, has_more=has_more)
-
+    # Render the result after the task is done
+    return render_template(
+        'find_like_minded.html',
+        query_text=query_text,
+        query_category=query_category,
+        similar_users=similar_users,
+        offset=offset,
+        limit=limit,
+        has_more=has_more
+    )
 
 # Developer Mode
 @app.route('/developer', methods=['GET', 'POST'])
@@ -279,6 +277,7 @@ def profile_lookup():
     if user_name:
         try:
             profile = handler.query_user_profile(user_name, query_text, query_category, limit, offset)
+            profile['bubbles'] = bubble_add_time(profile.get('bubbles'))
         except ValueError as e:
             flash_message(str(e), "error")
             return redirect(url_for('profile_lookup'))
