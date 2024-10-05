@@ -16,9 +16,12 @@
     <a href="{{ url_for('find_like_minded') }}">
         <button>👯 Find Like-Minded</button>   
     </a> 
-    <a href="{{ url_for('developer_mode') }}">
-        <button>👨‍💻 Developer Mode</button>
-    </a>
+    <!-- Show the Developer Mode link only if the logged-in user is the admin -->
+    {% if session['user'] == ADMIN_USERNAME %}
+    <a href="{{ url_for('admin_page') }}">
+        <button>👑 Developer Mode</button>   
+    </a> 
+    {% endif %}
 </div>
 
 <footer>

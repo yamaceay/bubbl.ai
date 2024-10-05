@@ -9,6 +9,10 @@ from lib import Handler, connect_weaviate_client, bubble_add_time
 from lib import BubbleError, BubbleNotFoundError, InvalidUserError, DatabaseError, DuplicateBubbleError
 from functools import wraps
 
+# Load ADMIN credentials from environment
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME')
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
+
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'super_secret_key')  # Use environment variable for security
 
@@ -40,6 +44,16 @@ def handle_pagination(request, limit=5):
     offset = request.args.get('offset', 0, type=int)
     limit = request.args.get('limit', limit, type=int)
     return limit, offset
+
+# Custom Admin Authentication Decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('user') != ADMIN_USERNAME:
+            flash_message("You need to log in as the admin to access this page!", "error")
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Custom Login Required Decorator
 def login_required(f):
@@ -93,15 +107,21 @@ def index():
                 session['user'] = username
                 flash_message("🎉 Welcome back! 🎉", "success")
                 return redirect(url_for('menu'))
+            elif username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+                # Admin login
+                session['user'] = ADMIN_USERNAME
+                flash_message("👑 Welcome, Admin!", "success")
+                return redirect(url_for('menu'))
             else:
                 flash_message("Invalid username or password. 😬", "error")
     return render_template('login.html')
+
 
 # Main Menu
 @app.route('/menu')
 @login_required
 def menu():
-    return render_template('menu.html')
+    return render_template('menu.html', ADMIN_USERNAME=ADMIN_USERNAME)
 
 # About Page
 @app.route('/about')
@@ -230,10 +250,10 @@ def find_like_minded():
         has_more=has_more
     )
 
-# Developer Mode
-@app.route('/developer', methods=['GET', 'POST'])
-@login_required
-def developer_mode():
+# Developer Mode (restricted to admin)
+@app.route('/admin_page', methods=['GET', 'POST'])
+@admin_required  # Ensure only the admin can access this route
+def admin_page():
     if request.method == 'POST':
         if 'pop_all' in request.form:  # Handle the logic for popping all bubbles
             handler.remove_all_bubbles(confirmation="yes")
@@ -250,7 +270,7 @@ def developer_mode():
                     flash_message("Something went wrong. Try again! 🌬️", "error")
             except FileNotFoundError:
                 flash_message("File not found. 🚫", "error")
-    return render_template('developer_mode.html')
+    return render_template('admin_page.html')
 
 # Profile Lookup Mode with Filters and Pagination
 @app.route('/profile_lookup', methods=['GET', 'POST'])
