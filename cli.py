@@ -108,7 +108,7 @@ def connect_weaviate_with_retries(retries=3, delay=2):
         time.sleep(delay)
     return None
 
-def developer_mode(handler):
+def developer_mode(handler: Handler):
     """
     Provides options for managing all bubbles in Developer Mode.
     """
@@ -130,7 +130,7 @@ def developer_mode(handler):
             break
 
 
-def insert_bubbles_from_json(handler):
+def insert_bubbles_from_json(handler: Handler):
     """
     Inserts bubbles from a JSON file into the Bubbl.ai platform.
     """
@@ -148,7 +148,7 @@ def insert_bubbles_from_json(handler):
         bubbly_print(f"Oops! File error: {e}. Please check and try again! 🚫", "😬")
 
 
-def pop_all_bubbles(handler):
+def pop_all_bubbles(handler: Handler):
     """
     Removes all bubbles from the Bubbl.ai platform after user confirmation.
     """
@@ -164,7 +164,7 @@ def pop_all_bubbles(handler):
         bubbly_print("Phew! The bubbles are safe for now. 😊", "😌")
 
 
-def creative_self_mode(handler):
+def creative_self_mode(handler: Handler):
     """
     Provides options to the user for managing their own bubbles.
     """
@@ -188,7 +188,7 @@ def creative_self_mode(handler):
             bubbly_print(f"Floating away from Creative Self Mode for {handler.user}. 🌬️", "👋")
             break
 
-def query_user_profile(handler):
+def query_user_profile(handler: Handler):
     """
     Provides options to the user for querying their own profile bubbles.
     """
@@ -202,7 +202,7 @@ def query_user_profile(handler):
             break
         offset += limit
 
-def insert_bubble(handler):
+def insert_bubble(handler: Handler):
     """
     Allows the user to create and insert a new bubble into the Bubbl.ai platform.
     """
@@ -219,7 +219,7 @@ def insert_bubble(handler):
         bubbly_print("Uh-oh! Something went wrong. Your bubble didn’t float this time. Try again! 🌬️", "😬")
 
 
-def remove_bubble(handler):
+def remove_bubble(handler: Handler):
     """
     Allows the user to remove one of their bubbles by specifying the UUID.
     """
@@ -232,7 +232,7 @@ def remove_bubble(handler):
         bubbly_print(f"Oops! Couldn’t find that bubble with UUID {uuid}. It might’ve floated away. 🧐")
 
 
-def explore_bubbles(handler):
+def explore_bubbles(handler: Handler):
     """
     Allows the user to explore and search for bubbles created by others based on a query.
     """
@@ -257,7 +257,7 @@ def explore_bubbles(handler):
         offset += page_size
 
 
-def find_like_minded_bubblers(handler):
+def find_like_minded_bubblers(handler: Handler):
     """
     Searches for other users with similar bubbles and thought patterns based on a search query.
     """
@@ -274,7 +274,7 @@ def find_like_minded_bubblers(handler):
         bubbly_print("No similar Bubblers found. Try another search! 🌟")
 
 
-def user_profile_mode(handler, user_name):
+def user_profile_mode(handler: Handler, user_name):
     """
     Enters the Profile Lookup Mode, allowing the current user to view and query another user's bubbles.
     """
@@ -314,7 +314,7 @@ def user_profile_mode(handler, user_name):
             break
 
 
-def perform_query(handler, user_name, query_text, query_category, limit, offset):
+def perform_query(handler: Handler, user_name, query_text, query_category, limit, offset):
     """
     Performs a search query for bubbles related to a user profile with optional filters.
     """
@@ -337,7 +337,7 @@ def display_profile(profile):
             print(f"💬 {bubble['content']} (Category: {bubble['category']})")
 
 
-def enter_profile_lookup_mode(handler):
+def enter_profile_lookup_mode(handler: Handler):
     """
     Prompts the user to enter a username and view another user's profile bubbles.
     """
@@ -432,7 +432,7 @@ def deregister_user(users, user):
     else:
         bubbly_print("Oops! Something went wrong during deregistration. Try again? 😬")
 
-def main_menu(handler):
+def main_menu(handler: Handler):
     """
     Displays the main menu and handles the user’s selection of actions.
     """

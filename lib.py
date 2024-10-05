@@ -127,7 +127,6 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
         "bubbles": user_bubbles
     }
     
-    
     return profile_data
 
 def group_bubbles_by_user(bubbles: List[Dict]):
@@ -257,10 +256,11 @@ def perform_similarity_search_users_by_profile(client, user: str, query_text: st
     """
     Perform a similarity search for the most relevant users based on their profiles and the current user's profile.
     """
-    user_profile = query_user_profile(client, user, query_text, limit_user)
+    user_profile = query_user_profile(client, user, query_text, limit=limit_user)
     if user_profile['total_bubbles'] == 0:
         return []
-    user_summary = summarize_user_content({user: user_profile['bubbles']})
+    user_contents = [bubble['content'] for bubble in user_profile['bubbles']]
+    user_summary = summarize_user_content({user: user_contents})
     bubbles = query_most_relevant_bubbles(client, user, query_text, limit)
     bubbles_by_user = group_bubbles_by_user(bubbles)
     summary_by_user = summarize_user_content(bubbles_by_user)
