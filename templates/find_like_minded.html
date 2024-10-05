@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Find Like-Minded Bubblers{% endblock %}
+
+{% block content %}
+<h2>🫂 Find Like-Minded Bubblers</h2>
+<p>Find other Bubblers who share similar thoughts and bubbles!</p>
+
+<!-- Search Form -->
+<form method="POST" action="{{ url_for('find_like_minded') }}">
+    <label for="query_text">Search Query (optional)💬</label>
+    <input type="text" name="query_text" value="{{ query_text }}" placeholder="Type your search query">
+    <label for="query_category">Filter by Category (optional)</label>
+    <input type="text" name="query_category" value="{{ query_category }}" placeholder="Filter by category (optional)">
+    {% if similar_users is not none %}
+    <button type="submit">Find Bubblers 🫂</button>
+    {% else %}
+    <button type="submit" disabled>Find Bubblers 🫂</button>
+    {% endif %}
+</form>
+
+<!-- Display Results -->
+{% if similar_users is not none %}
+    {% if similar_users %}
+    <h3>Here are some like-minded Bubblers 🎈</h3>
+    <ul class="similar-users-list">
+        {% for user in similar_users %}
+        <li>
+            <span>👤 {{ user.user }} (Similarity: {{ '%.2f' % (user.similarity * 100) }}%)</span>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Pagination Controls -->
+    <div class="pagination">
+        {% if offset > 0 %}
+        <a href="{{ url_for('find_like_minded', query_text=query_text, query_category=query_category, offset=offset - limit) }}">⬅️ Previous</a>
+        {% endif %}
+        {% if has_more %}
+        <a href="{{ url_for('find_like_minded', query_text=query_text, query_category=query_category, offset=offset + limit) }}">Next ➡️</a>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <p>No similar Bubblers found for your search. Try a different query! 🌈</p>
+    {% endif %}
+{% else %}
+<p>You have no bubbles yet to summarize! Create some bubbles in the <a href="{{ url_for('creative_self') }}">Creative Self Mode</a>.</p>
+{% endif %}
+
+<footer>
+    <p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+</footer>
+{% endblock %}

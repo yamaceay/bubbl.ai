@@ -35,46 +35,25 @@ def connect_weaviate_client():
         }
     )
 
-def query_most_relevant_bubbles(client, user: str, query_text: str, limit: int = 10, offset: int = 0):
+def perform_query(client, query_user: str = "", not_query_user: str = "", query_text: str = "", query_category: str = "", limit: int = 10, offset: int = 0):
     """
-    Query the 'Bubble' collection to find the most relevant k bubbles based on a text query.
+    Perform a query to find bubbles by a specific user and optionally a category.
     """
-    logging.info("Querying top %d most relevant bubbles for text: '%s'...", limit, query_text)
-    bubble_collection = client.collections.get("Bubble")
-
-    response = bubble_collection.query.near_text(
-        query_text,
-        filters=wvc.query.Filter.by_property("user").not_equal(user),  # Exclude current user's bubbles
-        limit=limit,
-        offset=offset,
-    )
-    
-    # Process the response and extract properties
-    bubbles = []
-    for obj in response.objects:
-        bubble_data = {
-            "content": obj.properties.get('content'),
-            "user": obj.properties.get('user'),
-            "category": obj.properties.get('category')
-        }
-        bubbles.append(bubble_data)
-    
-    return bubbles
-
-def query_user_profile(client, user_name: str, query_text: str = "", query_category: str = "", limit: int = 10, offset: int = 0):
-    """
-    Query a user's profile based on their username.
-    Returns the latest bubbles created by the user and other metadata.
-    """
-    logging.info("Starting query for user: '%s', category: '%s', and query text: '%s'.", user_name, query_category, query_text)
-    logging.info("Fetching up to %d recent bubbles.", limit)
-
     # Query the 'Bubble' collection for bubbles by this user
     bubble_collection = client.collections.get("Bubble")
     
     # Constructing the filter for the user and optionally the category
     logging.info("Building filters for user and category.")
-    filters = wvc.query.Filter.by_property("user").equal(user_name)
+    filters = wvc.query.Filter.by_property("content").like("*")  # Default filter to match all content (wildcard)
+    if query_user and not_query_user and query_user == not_query_user:
+        logging.error("Both query_user and not_query_user cannot be provided simultaneously.")
+        return None
+    if query_user:
+        logging.info("Adding user filter for: '%s'.", query_user)
+        filters &= wvc.query.Filter.by_property("user").equal(query_user)
+    elif not_query_user:
+        logging.info("Adding not user filter for: '%s'.", not_query_user)
+        filters &= wvc.query.Filter.by_property("user").not_equal(not_query_user)
     if query_category:
         logging.info("Adding category filter for: '%s'.", query_category)
         filters &= wvc.query.Filter.by_property("category").equal(query_category)
@@ -103,6 +82,42 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
         except Exception as e:
             logging.error("An error occurred during fetch_objects query execution: %s", e)
             return None
+    
+    return response
+
+def query_most_relevant_bubbles(client, user: str, query_text: str = "", query_category: str = "", limit: int = 10, offset: int = 0):
+    """
+    Query the 'Bubble' collection to find the most relevant k bubbles based on a text query.
+    """
+    logging.info("Querying top %d most relevant bubbles for text: '%s'...", limit, query_text)
+    
+    # Perform the query
+    response = perform_query(client, not_query_user=user, query_text=query_text, query_category=query_category, limit=limit, offset=offset)
+    
+    # Process the response and extract properties
+    bubbles = []
+    for obj in response.objects:
+        bubble_data = {
+            "content": obj.properties.get('content'),
+            "user": obj.properties.get('user'),
+            "category": obj.properties.get('category'),
+            "created_at": obj.properties.get('created_at'),  # Assuming 'created_at
+            "uuid": obj.uuid
+        }
+        bubbles.append(bubble_data)
+    
+    return bubbles
+
+def query_user_profile(client, user_name: str, query_text: str = "", query_category: str = "", limit: int = 10, offset: int = 0):
+    """
+    Query a user's profile based on their username.
+    Returns the latest bubbles created by the user and other metadata.
+    """
+    logging.info("Starting query for user: '%s', category: '%s', and query text: '%s'.", user_name, query_category, query_text)
+    logging.info("Fetching up to %d recent bubbles.", limit)
+
+    # Perform the query
+    response = perform_query(client, query_user=user_name, query_text=query_text, query_category=query_category, limit=limit, offset=offset)
     
     # Process the response and extract user-specific data
     logging.info("Processing query response.")
@@ -233,35 +248,23 @@ def remove_bubble(client, user: str, uuid: str):
     except Exception as e:
         logging.error("An unexpected error occurred: %s", e)
 
-def perform_similarity_search_bubbles(client, user: str, query_text: str, limit: int, offset: int):
+def perform_similarity_search_bubbles(client, user: str, query_text: str, query_category: str, limit: int, offset: int):
     """
     Perform a similarity search for the most relevant bubbles based on a query.
     """
-    bubbles = query_most_relevant_bubbles(client, user, query_text, limit, offset)
+    bubbles = query_most_relevant_bubbles(client, user, query_text, query_category, limit, offset)
     return bubbles
 
-def perform_similarity_search_users(client, user: str, query_text: str, limit: int):
-    """
-    Perform a similarity search for the most relevant users based on their summaries.
-    """
-    bubbles = query_most_relevant_bubbles(client, user, query_text, limit)
-    bubbles_by_user = group_bubbles_by_user(bubbles)
-    summary_by_user = summarize_user_content(bubbles_by_user)
-    query_embedding = embed_text_with_openai(query_text)
-    embedding_by_user = embed_user_summaries(summary_by_user)
-    ranked_users = compute_user_similarity(embedding_by_user, query_embedding)
-    return ranked_users
-
-def perform_similarity_search_users_by_profile(client, user: str, query_text: str, limit: int, limit_user: int):
+def perform_similarity_search_users_by_profile(client, user: str, query_text: str, query_category: str, limit: int, limit_user: int):
     """
     Perform a similarity search for the most relevant users based on their profiles and the current user's profile.
     """
-    user_profile = query_user_profile(client, user, query_text, limit=limit_user)
+    user_profile = query_user_profile(client, user, query_text, query_category, limit_user)
     if user_profile['total_bubbles'] == 0:
-        return []
+        return None
     user_contents = [bubble['content'] for bubble in user_profile['bubbles']]
     user_summary = summarize_user_content({user: user_contents})
-    bubbles = query_most_relevant_bubbles(client, user, query_text, limit)
+    bubbles = query_most_relevant_bubbles(client, user, query_text, query_category, limit)
     bubbles_by_user = group_bubbles_by_user(bubbles)
     summary_by_user = summarize_user_content(bubbles_by_user)
     summary_embedding = embed_text_with_openai(user_summary[user])
@@ -354,23 +357,17 @@ class Handler:
         """
         return remove_bubble(self.client, self.user, uuid)
 
-    def search_bubbles(self, query_text: str, limit: int = 5, offset: int = 0) -> Optional[List[Dict[str, Union[str, int]]]]:
+    def search_bubbles(self, query_text: str = "", query_category: str = "", limit: int = 5, offset: int = 0) -> Optional[List[Dict[str, Union[str, int]]]]:
         """
         Search for the most relevant bubbles based on a query.
         """
-        return perform_similarity_search_bubbles(self.client, self.user, query_text, limit, offset)
+        return perform_similarity_search_bubbles(self.client, self.user, query_text, query_category, limit, offset)
 
-    def search_users_by_profile(self, query_text: str, limit: int = 50, limit_user: int = 5) -> Optional[List[Dict[str, float]]]:
+    def search_users_by_profile(self, query_text: str = "", query_category: str = "", limit: int = 50, limit_user: int = 5) -> Optional[List[Dict[str, float]]]:
         """
         Search for the most relevant users based on the current user's profile.
         """
-        return perform_similarity_search_users_by_profile(self.client, self.user, query_text, limit, limit_user)
-
-    def search_users_by_query(self, query_text: str, limit: int = 5) -> Optional[List[Dict[str, float]]]:
-        """
-        Search for the most relevant users based on similarity of their bubbles.
-        """
-        return perform_similarity_search_users(self.client, self.user, query_text, limit)
+        return perform_similarity_search_users_by_profile(self.client, self.user, query_text, query_category, limit, limit_user)
 
     def query_user_profile(self, user_name: Optional[str] = None, query_text: str = "", query_category: str = "", limit: int = 5, offset: int = 0) -> Optional[Dict[str, Union[str, int, List[Dict[str, str]]]]]:
         """

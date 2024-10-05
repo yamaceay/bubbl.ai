@@ -5,9 +5,6 @@
 {% block content %}
 <h2>👨‍💻 Developer Mode</h2>
 
-<!-- Back to Main Menu -->
-<p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
-
 <!-- Form to Insert Bubbles from JSON File -->
 <h3>Blow Bubbles from a JSON File</h3>
 <form method="POST">
@@ -32,4 +29,9 @@
         </ul>
     {% endif %}
 {% endwith %}
+
+<!-- Back to Main Menu -->
+<footer>
+    <p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+</footer>
 {% endblock %}

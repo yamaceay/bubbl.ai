@@ -116,6 +116,12 @@ button:hover {
     box-shadow: 0 5px 15px rgba(21, 101, 192, 0.4);
 }
 
+button:disabled {
+    background-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
+}
+
 /* Links */
 a {
     color: #0d47a1;
@@ -266,4 +272,52 @@ h3 {
     font-size: 2em;
     color: #0d47a1;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Bubble List Styling */
+.bubble-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.bubble-item {
+    background-color: #e3f2fd;
+    padding: 20px;
+    border-radius: 20px;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease;
+}
+
+.bubble-item:hover {
+    background-color: #bbdefb;
+}
+
+.bubble-item span {
+    font-size: 1.2em;
+}
+
+/* Red Cross Button for Deleting Bubbles */
+.delete-form {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.delete-bubble {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.delete-bubble:hover {
+    background-color: #c62828;
 }

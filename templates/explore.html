@@ -4,14 +4,15 @@
 
 {% block content %}
 <h2>🔍 Explore Bubbles</h2>
-
-<!-- Back to Main Menu -->
-<p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+<p>Search for bubbles by content, user, or category.</p>
 
 <!-- Search Form -->
 <form method="POST">
-    <label for="query">Search Query</label>
-    <input type="text" name="query" value="{{ query }}" required><br>
+    <label for="query">Search Query (optional)</label>
+    <input type="text" name="query" value="{{ query }}"><br>
+
+    <label for="query_category">Filter by Category (optional)</label>
+    <input type="text" name="query_category" value="{{ query_category }}"><br>
 
     <button type="submit">Search</button>
 </form>
@@ -28,12 +29,17 @@
     <!-- Pagination Controls -->
     <div class="pagination">
         {% if offset > 0 %}
-            <a href="{{ url_for('explore', query=query, offset=offset - 5) }}">⬅️ Previous</a>
+            <a href="{{ url_for('explore', query=query, query_category=query_category, limit=limit, offset=offset - limit) }}">⬅️ Previous</a>
         {% endif %}
 
         {% if has_more %}
-            <a href="{{ url_for('explore', query=query, offset=offset + 5) }}">Next ➡️</a>
+            <a href="{{ url_for('explore', query=query, query_category=query_category, limit=limit, offset=offset + limit) }}">Next ➡️</a>
         {% endif %}
     </div>
 {% endif %}
+
+<!-- Back to Main Menu -->
+<footer>
+    <p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+</footer>
 {% endblock %}

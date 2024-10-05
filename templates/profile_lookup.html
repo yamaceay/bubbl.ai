@@ -4,9 +4,7 @@
 
 {% block content %}
 <h2>👤 Profile Lookup</h2>
-
-<!-- Back to Main Menu -->
-<p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+<p>Search for user profiles by username.</p>
 
 <!-- Search Form -->
 <form method="POST">
@@ -42,4 +40,9 @@
         {% endif %}
     </div>
 {% endif %}
+
+<!-- Back to Main Menu -->
+<footer>
+    <p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+</footer>
 {% endblock %}
