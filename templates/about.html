@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}About Bubbl.ai{% endblock %}
+
+{% block content %}
+
+<h1>About Bubbl.ai</h1>
+
+<!-- Float the image to the right with some margin -->
+<img src="{{ url_for('static', filename='images/bubble.png') }}" alt="Bubbl.ai Logo" width="200" class="about-image">
+
+<p>
+    Bubbl.ai is your personal thought vault and communication platform designed to capture, refine, and share your ideas effortlessly. We believe that every thought, opinion, or conversation you have holds value, and Bubbl.ai ensures that you never lose them. Whether you’re capturing a fleeting idea or engaging in meaningful discussions, Bubbl.ai helps you immortalize and evolve your thoughts over time.
+</p>
+
+<br>
+<p>
+    With Bubbl.ai, you can stop repeating the same conversations, share your ideas in the form of “bubbles,” and find like-minded individuals through our user similarity ranking. Our mission is to provide you with a space where your thoughts grow and evolve, and where communication transcends simple exchanges to meaningful, lasting connections.
+</p>
+
+<br>
+<p>
+    Whether you’re here to organize your thoughts, connect with others, or simply express yourself in a unique way, Bubbl.ai is your gateway to a new way of communicating. Together, we’ll create a universe of shared ideas, insightful conversations, and lifelong learning.
+</p>
+
+<br>
+<p>
+    <strong>Are you ready to bubble?</strong> Welcome to Bubbl.ai, where your thoughts live forever.
+</p>
+
+<br>
+<a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a>
+
+{% endblock %}

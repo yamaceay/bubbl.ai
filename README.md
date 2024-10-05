@@ -1,6 +1,6 @@
 ## Bubbl.ai: Capture, Connect, Converse.
 
-<img src="bubbl.ai.png" alt="Bubbl.ai Logo"></img>
+<img src="static/images/bubble.png" alt="Bubbl.ai Logo"></img>
 
 Ever found yourself repeating the same conversation with different people, over and over again? Whether it's discussing politics, debating life philosophies, or simply explaining your point of view, it can be exhausting. Enter **Bubbl.ai**, a revolutionary way to immortalize your thoughts, opinions, and conversations — without ever having to repeat yourself again.
 

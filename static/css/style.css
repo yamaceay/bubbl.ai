@@ -321,3 +321,36 @@ h3 {
 .delete-bubble:hover {
     background-color: #c62828;
 }
+
+.about-image {
+    float: right;                 /* Float the image to the right */
+    margin: 0 0 20px 20px;        /* Add some margin around the image for spacing */
+    border-radius: 50%;           /* Optional: Make the image round for a more "bubbly" effect */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow for depth */
+}
+
+/* Make the nav horizontal */
+nav ul {
+    list-style-type: none;  /* Remove default bullet points */
+    padding: 0;
+    margin: 0;
+    display: flex;          /* Make the list items align horizontally */
+    justify-content: center; /* Center the items horizontally */
+    gap: 20px;              /* Add spacing between the links */
+}
+
+nav ul li {
+    display: inline;        /* Ensure the list items are displayed inline */
+}
+
+nav ul li a {
+    text-decoration: none;  /* Remove the underline from the links */
+    color: #0d47a1;         /* Text color for the links */
+    padding: 10px 20px;     /* Add some padding around the links */
+    font-size: 1.1em;
+    transition: color 0.3s ease;
+}
+
+nav ul li a:hover {
+    color: #1565c0;         /* Change color on hover */
+}

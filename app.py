@@ -100,6 +100,11 @@ def index():
 def menu():
     return render_template('menu.html')
 
+# About Page
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
 # Creative Mode
 @app.route('/creative_self', methods=['GET', 'POST'])
 @login_required
