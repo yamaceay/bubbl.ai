@@ -179,7 +179,6 @@ def explore():
 @app.route('/find_like_minded', methods=['GET', 'POST'])
 @login_required
 def find_like_minded():
-    user_name = session['user']  # Get the logged-in user's name
     query_text = ""
     query_category = ""
     similar_users = None

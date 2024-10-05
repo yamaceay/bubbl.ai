@@ -153,7 +153,7 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
 
     # Perform the query
     response = perform_query(client, query_user=user_name, query_text=query_text, query_category=query_category, limit=limit, offset=offset)
-    
+
     # Process the response and extract user-specific data
     logging.info("Processing query response.")
     user_bubbles = []
@@ -162,7 +162,8 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
             bubble_data = {
                 "content": obj.properties.get('content'),
                 "category": obj.properties.get('category'),
-                "created_at": obj.properties.get('created_at')  # Assuming 'created_at' is a property
+                "created_at": obj.properties.get('created_at'),
+                "uuid": obj.uuid,
             }
             logging.info("Bubble found: %s... (Category: %s)", bubble_data['content'][:50], bubble_data['category'])
             user_bubbles.append(bubble_data)
