@@ -5,20 +5,44 @@
 {% block content %}
 <h2>👤 Profile Lookup</h2>
 
+<!-- Back to Main Menu -->
+<p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+
+<!-- Search Form -->
 <form method="POST">
     <label for="user_name">Enter Username to Search</label>
-    <input type="text" name="user_name" required><br>
+    <input type="text" name="user_name" value="{{ user_name }}" required><br>
+
+    <label for="query_text">Search Query Text (optional)</label>
+    <input type="text" name="query_text" value="{{ query_text }}"><br>
+
+    <label for="query_category">Filter by Category (optional)</label>
+    <input type="text" name="query_category" value="{{ query_category }}"><br>
+
+    <label for="limit">Bubbles per page</label>
+    <input type="number" name="limit" value="{{ limit }}" min="1" required><br>
 
     <button type="submit">Search</button>
 </form>
 
+<!-- Display User Profile Bubbles -->
 {% if profile %}
-    <h3>Profile of {{ profile.user }}</h3>
-    <p>Total Bubbles: {{ profile.total_bubbles }}</p>
+    <h3>Bubbles for User: {{ user_name }}</h3>
     <ul>
         {% for bubble in profile.bubbles %}
             <li>💬 {{ bubble.content }} (Category: {{ bubble.category }})</li>
         {% endfor %}
     </ul>
+
+    <!-- Pagination Controls -->
+    <div class="pagination">
+        {% if offset > 0 %}
+            <a href="{{ url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset - limit, limit=limit) }}">⬅️ Previous</a>
+        {% endif %}
+
+        {% if has_more %}
+            <a href="{{ url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset + limit, limit=limit) }}">Next ➡️</a>
+        {% endif %}
+    </div>
 {% endif %}
 {% endblock %}

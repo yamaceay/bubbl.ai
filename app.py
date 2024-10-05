@@ -165,34 +165,37 @@ def developer_mode():
                 flash("File not found. 🚫", "error")
     return render_template('developer_mode.html')
 
-# Profile Lookup Mode
-# Profile Lookup Mode
+# Profile Lookup Mode with Filters and Pagination
 @app.route('/profile_lookup', methods=['GET', 'POST'])
 def profile_lookup():
     if 'user' not in session:
         return redirect(url_for('index'))
 
     profile = None
-    query = ""
+    query_text = ""  # Default query text
+    query_category = ""  # Default category filter
     limit = 5  # Default limit (number of bubbles per page)
     offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
     limit = request.args.get('limit', limit, type=int)  # Allow custom limit via URL parameter
+    query_text = request.args.get('query_text', "")  # Persist the query text across pages
+    query_category = request.args.get('query_category', "")  # Persist the category filter across pages
     user_name = request.args.get('user_name', "")  # Persist the user name across pages
     has_more = True  # Default to True
 
-    if request.method == 'POST':  # When the user submits a new query for profile lookup
+    if request.method == 'POST':  # When the user submits new query or category filters
         user_name = request.form['user_name']
-        limit = int(request.form['limit'])
+        query_text = request.form['query_text'].strip()
+        query_category = request.form['query_category'].strip()
         if not user_name.strip():
             flash("Username cannot be empty!", "error")
             return redirect(url_for('profile_lookup'))
         offset = 0  # Reset to the first page on new search
-        return redirect(url_for('profile_lookup', user_name=user_name, offset=offset, limit=limit))  # Redirect to maintain the user and pagination in the URL
+        return redirect(url_for('profile_lookup', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset, limit=limit))
 
-    # Fetch user profile bubbles based on user_name, offset, and limit
+    # Fetch user profile bubbles based on user_name, query text, category filter, offset, and limit
     if user_name:
         try:
-            profile = handler.query_user_profile(user_name, limit, offset)
+            profile = handler.query_user_profile(user_name, query_text, query_category, limit, offset)
         except ValueError as e:
             flash(str(e), "error")
             return redirect(url_for('profile_lookup'))
@@ -200,9 +203,9 @@ def profile_lookup():
     # Determine if there are more bubbles for the "Next" page
     next_offset = offset + limit
     if user_name:
-        has_more = handler.query_user_profile(user_name, 1, next_offset)  # Check if more bubbles exist beyond current limit
+        has_more = handler.query_user_profile(user_name, query_text, query_category, 1, next_offset)  # Check if more bubbles exist
 
-    return render_template('profile_lookup.html', profile=profile, user_name=user_name, offset=offset, limit=limit, has_more=has_more)
+    return render_template('profile_lookup.html', profile=profile, user_name=user_name, query_text=query_text, query_category=query_category, offset=offset, limit=limit, has_more=has_more)
 
 # Logout
 @app.route('/logout')
