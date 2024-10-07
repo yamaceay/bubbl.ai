@@ -6,3 +6,4 @@ scikit_learn
 weaviate_client
 python-dotenv
 humanize
+asyncio
