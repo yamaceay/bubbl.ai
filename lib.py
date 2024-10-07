@@ -114,7 +114,7 @@ def perform_query(client, query_user: str = "", not_query_user: str = "", query_
                 filters=filters,
                 limit=limit,
                 offset=offset,
-                sort=wvc.query.Sort.by_property(name="created_at", ascending=False),
+                return_metadata=wvc.query.MetadataQuery(creation_time=True),
             )
         except Exception as e:
             logging.error("An error occurred during fetch_objects query execution: %s", e)
@@ -138,7 +138,7 @@ def query_most_relevant_bubbles(client, user: str, query_text: str = "", query_c
             "content": obj.properties.get('content'),
             "user": obj.properties.get('user'),
             "category": obj.properties.get('category'),
-            "created_at": obj.properties.get('created_at'),  # Assuming 'created_at' is a property
+            "created_at": obj.metadata.creation_time,
             "uuid": obj.uuid
         }
         bubbles.append(bubble_data)
@@ -164,7 +164,7 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
             bubble_data = {
                 "content": obj.properties.get('content'),
                 "category": obj.properties.get('category'),
-                "created_at": obj.properties.get('created_at'),
+                "created_at": obj.metadata.creation_time,
                 "uuid": obj.uuid,
             }
             logging.info("Bubble found: %s... (Category: %s)", bubble_data['content'][:50], bubble_data['category'])
@@ -290,12 +290,11 @@ def insert_bubbles(client, bubbles: List[Dict]):
     for bubble in bubbles:
         result = collection.query.fetch_objects(
             filters=wvc.query.Filter.by_property("content").equal(bubble["content"]),
-            sort=wvc.query.Sort.by_property(name="created_at", ascending=False),
         )
         if result.objects:
             raise DuplicateBubbleError(f"Bubble with content '{bubble['content']}' already exists.")
     try:
-        objects = [wvc.data.DataObject(properties={**bubble, "created_at": datetime.datetime.now().isoformat()}) for bubble in bubbles]
+        objects = [wvc.data.DataObject(properties=bubble) for bubble in bubbles]
         response = collection.data.insert_many(objects)
         return response.uuids
     except Exception as e:
@@ -366,7 +365,6 @@ def create_bubble_schema(client):
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="user", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="category", data_type=wvc.config.DataType.TEXT),
-                wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE_TIME, indexed=True)
             ]
         )
         logging.info("Bubble collection created")
@@ -411,8 +409,6 @@ def insert_bubbles_from_json(client, json_data: List[Dict]):
         # Insert bubbles in bulk using insert_many
         with collection.batch.dynamic() as batch:
             for bubble in json_data:
-                created_at = datetime.datetime.now().isoformat()
-                bubble['created_at'] = created_at
                 batch.add_object(properties=bubble)
 
         # Retrieve and print all generated UUIDs
@@ -427,9 +423,6 @@ def bubble_add_time(bubbles: List[Dict]) -> List[Dict]:
     for bubble in bubbles:
         created_at = bubble.get('created_at')
         if created_at:
-            # Convert the `created_at` to a datetime object
-            # created_at_dt = datetime.datetime.fromisoformat(created_at)
-            # Calculate the human-readable relative time
             bubble['created_at_str'] = humanize.naturaltime(current_time - created_at)
         else:
             bubble['created_at_str'] = "Unknown time"
