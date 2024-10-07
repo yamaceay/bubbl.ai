@@ -1,3 +1,4 @@
+import asyncio
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -223,9 +224,9 @@ def rank_users():
         query_text = request.form['query_text'].strip()
         query_category = request.form['query_category'].strip()
 
-    # Define a task to run in the background for finding similar users
+    # Run the async function
     try:
-        similar_users = handler.search_users_by_profile(query_text, query_category, limit_bubbles, limit_bubble_user)
+        similar_users = asyncio.run(handler.search_users_by_profile(query_text, query_category, limit_bubbles, limit_bubble_user))
     except ValueError as e:
         flash_message(str(e), "error")
         return None

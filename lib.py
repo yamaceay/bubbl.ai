@@ -4,6 +4,7 @@ import logging
 
 from typing import List, Dict, Optional, Union
 import numpy as np
+import asyncio
 import openai
 import weaviate
 import weaviate.classes as wvc
@@ -206,14 +207,26 @@ def summarize_user_content(user_bubbles: Dict[str, str]):
     logging.info("Summarizing user content...")
     return {user: content for user, content in user_bubbles.items()}  # Simple concatenation for now
 
-def embed_text_with_openai(text: str) -> np.ndarray:
+async def embed_text_with_openai_async(text: str) -> np.ndarray:
     """
-    Embed a text using OpenAI's embedding API.
+    Embed a text asynchronously using OpenAI's embedding API in a thread.
     """
-    logging.info("Embedding text with OpenAI: %s...", text[:50])  # Log first 50 chars for context
-    response = openai.embeddings.create(input=text, model="text-embedding-ada-002")
+    logging.info("Embedding text asynchronously with OpenAI: %s...", text[:50])
+    
+    # Run the synchronous OpenAI API call in a separate thread
+    response = await asyncio.to_thread(openai.embeddings.create, input=text, model="text-embedding-ada-002")
+    
+    # Extract the embedding
     embedding = response.data[0].embedding
     return np.array(embedding)
+
+async def embed_user_summaries_async(user_summaries: Dict[str, str]) -> Dict[str, np.ndarray]:
+    """
+    Embed each user's summary using OpenAI API asynchronously to create vector representations of user opinions.
+    """
+    tasks = [embed_text_with_openai_async(summary) for user, summary in user_summaries.items()]
+    results = await asyncio.gather(*tasks)
+    return {user: embedding for user, embedding in zip(user_summaries.keys(), results)}
 
 def embed_user_summaries(user_summaries: Dict[str, str]) -> Dict[str, np.ndarray]:
     """
@@ -296,7 +309,14 @@ def perform_similarity_search_bubbles(client, user: str, query_text: str, query_
     bubbles = query_most_relevant_bubbles(client, user, query_text, query_category, limit, offset)
     return bubbles
 
-def perform_similarity_search_users_by_profile(client, user: str, query_text: str, query_category: str, limit: int, limit_user: int):
+async def perform_similarity_search_users_by_profile(
+        client, 
+        user: str, 
+        query_text: str, 
+        query_category: str, 
+        limit: int, 
+        limit_user: int,
+    ):
     """
     Perform a similarity search for the most relevant users based on their profiles and the current user's profile.
     """
@@ -304,13 +324,14 @@ def perform_similarity_search_users_by_profile(client, user: str, query_text: st
     if user_profile['total_bubbles'] == 0:
         return None
     user_contents = [bubble['content'] for bubble in user_profile['bubbles']]
-    user_summary = summarize_user_content({user: user_contents})
+    user_summary = summarize_user_content({user: user_contents})[user]
     bubbles = query_most_relevant_bubbles(client, user, query_text, query_category, limit)
     bubbles_by_user = group_bubbles_by_user(bubbles)
     summary_by_user = summarize_user_content(bubbles_by_user)
-    summary_embedding = embed_text_with_openai(user_summary[user])
-    embedding_by_user = embed_user_summaries(summary_by_user)
-    ranked_users = compute_user_similarity(embedding_by_user, summary_embedding)
+    summary_by_user[user] = user_summary
+    embedding_by_user = await embed_user_summaries_async(summary_by_user)
+    embedding_user = embedding_by_user.pop(user)
+    ranked_users = compute_user_similarity(embedding_by_user, embedding_user)
     return ranked_users
 
 def create_bubble_schema(client):
@@ -326,7 +347,7 @@ def create_bubble_schema(client):
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="user", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="category", data_type=wvc.config.DataType.TEXT),
-                wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE_TIME)
+                wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE_TIME, indexed=True)
             ]
         )
         logging.info("Bubble collection created")
@@ -421,11 +442,11 @@ class Handler:
         """
         return perform_similarity_search_bubbles(self.client, self.user, query_text, query_category, limit, offset)
 
-    def search_users_by_profile(self, query_text: str = "", query_category: str = "", limit: int = 50, limit_user: int = 5) -> Optional[List[Dict[str, float]]]:
+    async def search_users_by_profile(self, query_text: str = "", query_category: str = "", limit: int = 50, limit_user: int = 5) -> Optional[List[Dict[str, float]]]:
         """
         Search for the most relevant users based on the current user's profile.
         """
-        return perform_similarity_search_users_by_profile(self.client, self.user, query_text, query_category, limit, limit_user)
+        return await perform_similarity_search_users_by_profile(self.client, self.user, query_text, query_category, limit, limit_user)
 
     def query_user_profile(self, user_name: Optional[str] = None, query_text: str = "", query_category: str = "", limit: int = 5, offset: int = 0) -> Optional[Dict[str, Union[str, int, List[Dict[str, str]]]]]:
         """
