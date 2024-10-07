@@ -115,6 +115,7 @@ def perform_query(client, query_user: str = "", not_query_user: str = "", query_
                 limit=limit,
                 offset=offset,
                 return_metadata=wvc.query.MetadataQuery(creation_time=True),
+                sort=wvc.query.Sort.by_property(name="_creationTimeUnix", ascending=False),
             )
         except Exception as e:
             logging.error("An error occurred during fetch_objects query execution: %s", e)
