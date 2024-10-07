@@ -383,14 +383,14 @@ def insert_bubbles_from_json(client, json_data: List[Dict]):
 
 def bubble_add_time(bubbles: List[Dict]) -> List[Dict]:
     # Add created_at_str attribute for human-readable timestamps
-    current_time = datetime.datetime.now()
+    current_time = datetime.datetime.now(datetime.timezone.utc)
     for bubble in bubbles:
         created_at = bubble.get('created_at')
         if created_at:
             # Convert the `created_at` to a datetime object
-            created_at_dt = datetime.datetime.fromisoformat(created_at)
+            # created_at_dt = datetime.datetime.fromisoformat(created_at)
             # Calculate the human-readable relative time
-            bubble['created_at_str'] = humanize.naturaltime(current_time - created_at_dt)
+            bubble['created_at_str'] = humanize.naturaltime(current_time - created_at)
         else:
             bubble['created_at_str'] = "Unknown time"
     return bubbles
