@@ -199,13 +199,45 @@ def group_bubbles_by_user(bubbles: List[Dict]):
     
     return user_bubbles
 
-def summarize_user_content(user_bubbles: Dict[str, str]):
+async def summarize_with_gpt(content: str) -> str:
     """
-    Summarize the content for each user. For simplicity, we're concatenating the content here.
-    Advanced: You could use a GPT-based summarization model for more sophisticated summaries.
+    Asynchronously call OpenAI's chat-based API to summarize the given content using the correct endpoint for chat models.
     """
-    logging.info("Summarizing user content...")
-    return {user: content for user, content in user_bubbles.items()}  # Simple concatenation for now
+    logging.info("Summarizing content with GPT: %s...", content[:50])
+
+    # Define the message structure for GPT-4 chat model
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant that summarizes content."},
+        {"role": "user", "content": f"Summarize the following content:\n\n{content}"}
+    ]
+
+    # Call the GPT-4 or GPT-3.5-turbo chat model to summarize the content
+    response = await asyncio.to_thread(
+        openai.chat.completions.create,
+        model="gpt-4o",
+        messages=messages,
+        temperature=0.7,
+        max_tokens=100
+    )
+
+    # Extract the summarized content from the response
+    summary = response.choices[0].message.content.strip()
+    return summary
+
+async def summarize_user_content_async(user_bubbles: Dict[str, str]) -> Dict[str, str]:
+    """
+    Summarize the content for each user using GPT in an asynchronous and efficient manner.
+    """
+    logging.info("Summarizing user content with GPT...")
+
+    # Prepare async tasks to summarize content for each user
+    tasks = [summarize_with_gpt(content) for content in user_bubbles.values()]
+
+    # Gather all summaries in parallel
+    summaries = await asyncio.gather(*tasks)
+
+    # Return a dictionary mapping users to their summaries
+    return {user: summary for user, summary in zip(user_bubbles.keys(), summaries)}
 
 async def embed_text_with_openai_async(text: str) -> np.ndarray:
     """
@@ -227,18 +259,6 @@ async def embed_user_summaries_async(user_summaries: Dict[str, str]) -> Dict[str
     tasks = [embed_text_with_openai_async(summary) for user, summary in user_summaries.items()]
     results = await asyncio.gather(*tasks)
     return {user: embedding for user, embedding in zip(user_summaries.keys(), results)}
-
-def embed_user_summaries(user_summaries: Dict[str, str]) -> Dict[str, np.ndarray]:
-    """
-    Embed each user's summary using OpenAI API to create vector representations of user opinions.
-    """
-    logging.info("Embedding user summaries...")
-    user_embeddings = {}
-    
-    for user, summary in user_summaries.items():
-        user_embeddings[user] = embed_text_with_openai(summary)
-    
-    return user_embeddings
 
 def compute_user_similarity(user_embeddings: Dict[str, np.ndarray], query_embedding: np.ndarray) -> List[Dict[str, float]]:
     """
@@ -323,12 +343,11 @@ async def perform_similarity_search_users_by_profile(
     user_profile = query_user_profile(client, user, query_text, query_category, limit_user)
     if user_profile['total_bubbles'] == 0:
         return None
-    user_contents = [bubble['content'] for bubble in user_profile['bubbles']]
-    user_summary = summarize_user_content({user: user_contents})[user]
     bubbles = query_most_relevant_bubbles(client, user, query_text, query_category, limit)
     bubbles_by_user = group_bubbles_by_user(bubbles)
-    summary_by_user = summarize_user_content(bubbles_by_user)
-    summary_by_user[user] = user_summary
+    user_contents = [bubble['content'] for bubble in user_profile['bubbles']]
+    bubbles_by_user[user] = user_contents
+    summary_by_user = await summarize_user_content_async(bubbles_by_user)
     embedding_by_user = await embed_user_summaries_async(summary_by_user)
     embedding_user = embedding_by_user.pop(user)
     ranked_users = compute_user_similarity(embedding_by_user, embedding_user)
