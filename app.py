@@ -239,7 +239,7 @@ def rank_users():
 
     # Check if there are more users beyond the current limit for pagination
     next_offset = offset + limit
-    has_more = handler.search_users_by_profile(query_text, query_category, 1, next_offset)
+    has_more = asyncio.run(handler.search_users_by_profile(query_text, query_category, 1, next_offset))
 
     # Render the result after the task is done
     return render_template(
