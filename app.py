@@ -275,6 +275,7 @@ def admin():
     return render_template('admin.html')
 
 # Profile Lookup Mode with Filters and Pagination
+# Profile Lookup Mode with Filters and Pagination (fused with the 'me' section)
 @app.route('/users', methods=['GET', 'POST'])
 @login_required
 def users():
@@ -282,17 +283,48 @@ def users():
     offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
     query_text = request.args.get('query_text', "")  # Persist the query text across pages
     query_category = request.args.get('query_category', "")  # Persist the category filter across pages
-    user_name = request.args.get('user_name', "")  # Persist the user name across pages
-    has_more = True  # Default to True
+    user_name = request.args.get('user_name', session['user'])  # Default to the logged-in user's profile
     profile = None
+    is_current_user = user_name == session['user']  # Check if the user is looking at their own profile
+    has_more = True  # Default to True
 
-    if request.method == 'POST':  # When the user submits new query or category filters
+    # Handle search submission
+    if request.method == 'POST':
+        if 'create_bubble' in request.form and is_current_user:
+            # Handle bubble creation (only for current user)
+            content = request.form['content'].strip()
+            category = request.form.get('category', '').strip()  # Category is optional
+            if not content:
+                flash_message("Content cannot be empty! 🧐", "error")
+            else:
+                try:
+                    bubble = [{"content": content, "user": user_name, "category": category}]
+                    result = handler.insert_bubbles(bubble)
+                    flash_message("✨ Your bubble has been blown! 🎉", "success")
+                except DuplicateBubbleError as e:
+                    flash_message(str(e), "error")
+                except DatabaseError as e:
+                    flash_message("Uh-oh! Something went wrong while creating the bubble. 🌬️", "error")
+            return redirect(url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=0))
+        
+        elif 'remove_bubble' in request.form and is_current_user:
+            # Handle bubble removal (only for current user)
+            bubble_id = request.form['bubble_id']
+            try:
+                success = handler.remove_bubble(bubble_id)
+                flash_message("✨ Bubble has been successfully popped! 🎉", "success")
+            except (BubbleNotFoundError, InvalidUserError, DatabaseError) as e:
+                flash_message(str(e), "error")
+            return redirect(url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=0))
+
+        # Handle search for users and bubbles
         user_name = request.form['user_name']
         query_text = request.form['query_text'].strip()
         query_category = request.form['query_category'].strip()
         if not user_name.strip():
             flash_message("Username cannot be empty!", "error")
             return redirect(url_for('users'))
+
         return redirect(url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=0))
 
     # Fetch user profile bubbles based on user_name, query text, category filter, offset, and fixed limit
@@ -308,7 +340,17 @@ def users():
     next_offset = offset + limit
     has_more = handler.query_user_profile(user_name, query_text, query_category, 1, next_offset) if user_name else False
 
-    return render_template('users.html', profile=profile, user_name=user_name, query_text=query_text, query_category=query_category, offset=offset, has_more=has_more)
+    return render_template(
+        'users.html',
+        profile=profile,
+        user_name=user_name,
+        query_text=query_text,
+        query_category=query_category,
+        offset=offset,
+        limit=limit,
+        has_more=has_more,
+        is_current_user=is_current_user  # Pass whether it's the current user's profile
+    )
 
 # Logout
 @app.route('/logout')

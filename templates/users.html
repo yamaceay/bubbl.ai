@@ -1,53 +1,87 @@
 {% extends "base.html" %}
 
-{% block header %}👤 Search Users{% endblock %}
+{% block header %}
+    {% if is_current_user %}
+        🎨 My Bubbles
+    {% else %}
+        👤 Search Users
+    {% endif %}
+{% endblock %}
 
 {% block content %}
-<p>Search for user profiles by username.</p>
+    <!-- Display header message based on current user -->
+    {% if is_current_user %}
+        <p>Blow your own bubbles and let your creativity flow!</p>
+    {% else %}
+        <p>Search for user profiles by username.</p>
+    {% endif %}
 
-<!-- Search Form -->
-<form method="POST">
-    <label for="user_name">Enter Username to Search</label>
-    <input type="text" name="user_name" value="{{ user_name }}" required><br>
+    <!-- Search Form -->
+    <form method="POST">
+        <label for="user_name">Enter Username to Search</label>
+        <input type="text" name="user_name" value="{{ user_name }}" required><br>
 
-    <label for="query_text">Search Query Text (optional)</label>
-    <input type="text" name="query_text" value="{{ query_text }}"><br>
+        <label for="query_text">Search Query Text (optional)</label>
+        <input type="text" name="query_text" value="{{ query_text }}"><br>
 
-    <label for="query_category">Filter by Category (optional)</label>
-    <input type="text" name="query_category" value="{{ query_category }}"><br>
+        <label for="query_category">Filter by Category (optional)</label>
+        <input type="text" name="query_category" value="{{ query_category }}"><br>
 
-    <button type="submit">Search</button>
-</form>
+        <button type="submit">Search</button>
+    </form>
 
-<!-- Display User Profile Bubbles -->
-{% if profile %}
-    <h3>Bubbles for User: {{ user_name }}</h3>
-    <div class="bubble-list">
-        {% for bubble in profile.bubbles %}
-            <div class="bubble-item">
-                {% if bubble.category %}
-                    <li>🎉 {{ bubble.content }} <i>in #{{ bubble.category }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
-                {% else %}
-                    <li>🎉 {{ bubble.content }} <br> <small>{{ bubble.created_at_str }}</small></li>
-                {% endif %}
-            </div>
-        {% endfor %}
-    </div>
+    <!-- Show extra options if the current user is viewing their own profile -->
+    {% if is_current_user %}
+    <!-- Create New Bubble Form -->
+    <form method="POST" action="{{ url_for('users', user_name=user_name) }}">
+        <label for="content">Blow a New Bubble:</label>
+        <textarea name="content" placeholder="What's on your mind?"></textarea>
+        <label for="category">Category:</label>
+        <input type="text" name="category" placeholder="Category (optional)">
+        <button type="submit" name="create_bubble" class="create-bubble">Blow Bubble 💭</button>
+    </form>
+    {% endif %}
 
-    <!-- Pagination Controls -->
-    <div class="pagination">
-        {% if offset > 0 %}
-            <a href="{{ url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset - 5) }}">⬅️ Previous</a>
-        {% endif %}
+    <!-- Display User Profile Bubbles -->
+    {% if profile %}
+        <h3>Bubbles for User: {{ user_name }}</h3>
+        <div class="bubble-list">
+            {% if profile.bubbles %}
+                {% for bubble in profile.bubbles %}
+                <div class="bubble-item">
+                    {% if bubble.category %}
+                        <li>🎉 {{ bubble.content }} <i>in #{{ bubble.category }}</i> <br> <small>{{ bubble.created_at_str }}</small></li>
+                    {% else %}
+                        <li>🎉 {{ bubble.content }} <br> <small>{{ bubble.created_at_str }}</small></li>
+                    {% endif %}
 
-        {% if has_more %}
-            <a href="{{ url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset + 5) }}">Next ➡️</a>
-        {% endif %}
-    </div>
-{% endif %}
+                    <!-- If current user, show option to remove bubbles -->
+                    {% if is_current_user %}
+                    <form method="POST" class="delete-form">
+                        <input type="hidden" name="bubble_id" value="{{ bubble.uuid }}">
+                        <button type="submit" name="remove_bubble" class="delete-bubble">❌</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>No bubbles found. Start creating your own bubbles!</p>
+            {% endif %}
+        </div>
 
-<!-- Back to Main Menu -->
-<footer>
-    <p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
-</footer>
+        <!-- Pagination Controls -->
+        <div class="pagination">
+            {% if offset > 0 %}
+                <a href="{{ url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset - limit) }}">⬅️ Previous</a>
+            {% endif %}
+            {% if has_more %}
+                <a href="{{ url_for('users', user_name=user_name, query_text=query_text, query_category=query_category, offset=offset + limit) }}">Next ➡️</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Back to Main Menu -->
+    <footer>
+        <p><a href="{{ url_for('menu') }}">⬅️ Back to Main Menu</a></p>
+    </footer>
 {% endblock %}
