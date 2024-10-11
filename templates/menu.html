@@ -10,9 +10,6 @@
     <a href="{{ url_for('users') }}">
         <button>👤 Users</button>
     </a>
-    <a href="{{ url_for('rank_users') }}">
-        <button>👯 Rank Users</button>   
-    </a> 
     <!-- Show the Developer Mode link only if the logged-in user is the admin -->
     {% if session['user'] == ADMIN_USERNAME %}
     <a href="{{ url_for('admin') }}">

@@ -103,6 +103,7 @@ def perform_query(client, query_user: str = "", not_query_user: str = "", query_
                 filters=filters,
                 limit=limit,
                 offset=offset,
+                return_metadata=wvc.query.MetadataQuery(creation_time=True),
             )
         except Exception as e:
             logging.error("An error occurred during near_text query execution: %s", e)
@@ -165,6 +166,7 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
             bubble_data = {
                 "content": obj.properties.get('content'),
                 "category": obj.properties.get('category'),
+                "user": obj.properties.get('user'),
                 "created_at": obj.metadata.creation_time,
                 "uuid": obj.uuid,
             }
@@ -173,7 +175,7 @@ def query_user_profile(client, user_name: str, query_text: str = "", query_categ
         logging.info("Query complete. Found %d bubbles for user: '%s'.", len(user_bubbles), user_name)
     else:
         logging.info("No bubbles found for user: '%s'.", user_name)
-    
+
     # Additional user profile metadata
     profile_data = {
         "user": user_name,
@@ -304,18 +306,24 @@ def insert_bubbles(client, bubbles: List[Dict]):
         logging.error("An error occurred: %s", e)
         raise DatabaseError("Failed to insert bubbles into the database.")
 
+def get_bubble(client, user: str, uuid: str) -> tuple[Optional[Dict], bool]:
+    """
+    Check if a bubble is removable by the user.
+    """
+    logging.info("Checking if bubble with UUID %s is removable...", uuid)
+    old_bubble = client.collections.get("Bubble").query.fetch_object_by_id(uuid)
+    return old_bubble, old_bubble.properties.get("user") == user
+
 def remove_bubble(client, user: str, uuid: str):
     """
     Remove a bubble from the Weaviate database by UUID.
     Raises BubbleNotFoundError if the bubble is not found or does not belong to the user.
     """
-    logging.info("Removing bubble with UUID %s...", uuid)
-    old_bubble = client.collections.get("Bubble").query.fetch_object_by_id(uuid)
+    old_bubble, permission = get_bubble(client, user, uuid)
     if not old_bubble:
         raise BubbleNotFoundError(f"No bubble found with UUID {uuid}.")
-    if old_bubble.properties.get("user") != user:
+    if not permission:
         raise InvalidUserError("You do not have permission to delete this bubble.")
-
     try:
         client.collections.get("Bubble").data.delete_by_id(uuid)
         logging.info("Bubble with UUID %s removed successfully.", uuid)
@@ -444,6 +452,12 @@ class Handler:
         Insert bubbles using user-provided content and category.
         """
         return insert_bubbles(self.client, bubbles)
+
+    def get_bubble(self, uuid: str) -> Optional[Dict[str, Union[str, int]]]:
+        """
+        Get a bubble and the permission using its UUID.
+        """
+        return get_bubble(self.client, self.user, uuid)
 
     def remove_bubble(self, uuid: str) -> bool:
         """
