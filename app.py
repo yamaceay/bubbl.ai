@@ -107,12 +107,12 @@ def index():
             if username in users and check_password(password, users[username]):
                 session['user'] = username
                 flash_message(f"🎉 Welcome, {username}! 🎉", "success")
-                return redirect(url_for('menu'))
+                return redirect(url_for('feed'))  # Redirect to feed after login
             elif username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
                 # Admin login
                 session['user'] = ADMIN_USERNAME
                 flash_message("👑 Welcome, Admin!", "success")
-                return redirect(url_for('menu'))
+                return redirect(url_for('feed'))  # Admin also redirected to feed
             else:
                 flash_message("Invalid username or password. 😬", "error")
     return render_template('login.html')
