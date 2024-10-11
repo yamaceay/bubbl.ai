@@ -289,8 +289,10 @@ def insert_bubbles(client, bubbles: List[Dict]):
     collection = client.collections.get("Bubble")
 
     for bubble in bubbles:
+        user_filter = wvc.query.Filter.by_property("user").equal(bubble["user"])
+        content_filter = wvc.query.Filter.by_property("content").equal(bubble["content"])
         result = collection.query.fetch_objects(
-            filters=wvc.query.Filter.by_property("content").equal(bubble["content"]),
+            filters=user_filter & content_filter,
         )
         if result.objects:
             raise DuplicateBubbleError(f"Bubble with content '{bubble['content']}' already exists.")
