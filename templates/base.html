@@ -7,28 +7,25 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('about') }}">About Bubbl.ai</a></li> <!-- Link to the About page -->
+            <li><a href="{{ url_for('logout') }}">Log out</a></li>
+            <li><p>&copy; 2024 Bubbl.ai</p></li>
+        </ul>
+    </nav>
     <div class="container">
         <header>
+            
             <h1>{% block header %}Welcome to Bubbl.ai{% endblock %}</h1>
         </header>
         <main>
             {% block content %}{% endblock %}
         </main>
-        <footer>
-            
-        </footer>
     </div>
 </body>
 </html>
-
-<nav>
-    <ul>
-        <li><a href="{{ url_for('index') }}">Home</a></li>
-        <li><a href="{{ url_for('menu') }}">Menu</a></li>
-        <li><a href="{{ url_for('about') }}">About Bubbl.ai</a></li> <!-- Link to the About page -->
-        <li><p>&copy; 2024 Bubbl.ai</p></li>
-    </ul>
-</nav>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}

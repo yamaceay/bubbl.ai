@@ -291,6 +291,10 @@ h3 {
     transition: background-color 0.3s ease;
 }
 
+.bubble-item-mine {
+    background-color: #90caf9;
+}
+
 .bubble-item:hover {
     background-color: #bbdefb;
 }

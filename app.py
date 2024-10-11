@@ -100,65 +100,29 @@ def index():
                 users[username] = hash_password(password)
                 save_users(users)
                 flash_message("🎉 You've successfully registered!", "success")
-                return redirect(url_for('index'))
+                return redirect(url_for('home'))
             else:
                 flash_message("Username already exists. Try again! 😬", "error")
         elif action == 'login':
             if username in users and check_password(password, users[username]):
                 session['user'] = username
                 flash_message(f"🎉 Welcome, {username}! 🎉", "success")
-                return redirect(url_for('feed'))  # Redirect to feed after login
+                return redirect(url_for('home'))  # Redirect to feed after login
             elif username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
                 # Admin login
                 session['user'] = ADMIN_USERNAME
                 flash_message("👑 Welcome, Admin!", "success")
-                return redirect(url_for('feed'))  # Admin also redirected to feed
+                return redirect(url_for('admin'))  # Admin also redirected to feed
             else:
                 flash_message("Invalid username or password. 😬", "error")
     return render_template('login.html')
-
-
-# Main Menu
-@app.route('/menu')
-@login_required
-def menu():
-    return render_template('menu.html', ADMIN_USERNAME=ADMIN_USERNAME)
 
 # About Page
 @app.route('/about')
 def about():
     return render_template('about.html')
 
-# Explore Bubbles
-@app.route('/feed', methods=['GET', 'POST'])
-@login_required
-def feed():
-    limit = 5  # Fixed limit of 5 bubbles per page
-    offset = request.args.get('offset', 0, type=int)  # Default offset is 0 (start from the beginning)
-    query = request.args.get('query', "")
-    query_category = request.args.get('query_category', "")
-
-    if request.method == 'POST':  # When the user submits a new query
-        query = request.form['query']
-        query_category = request.form['query_category']
-        return redirect(url_for('feed', query=query, query_category=query_category, limit=limit, offset=0))  # Reset to first page on new search
-
-    # Fetch bubbles based on query, offset, and fixed limit
-    bubbles = None
-    try:
-        bubbles = handler.search_bubbles(query, query_category, limit, offset)
-        bubbles = bubble_add_time(bubbles)
-    except ValueError as e:
-        flash_message(str(e), "error")
-        return redirect(url_for('feed'))
-
-    # Determine if there are more bubbles for the "Next" page
-    next_offset = offset + limit
-    has_more = handler.search_bubbles(query, query_category, 1, next_offset) if query or query_category else True
-
-    return render_template('feed.html', bubbles=bubbles, query=query, query_category=query_category, offset=offset, limit=limit, has_more=has_more)
-
-# Developer Mode (restricted to admin)
+# # Developer Mode (restricted to admin)
 @app.route('/admin', methods=['GET', 'POST'])
 @admin_required  # Ensure only the admin can access this route
 def admin():
@@ -180,15 +144,15 @@ def admin():
                 flash_message("File not found. 🚫", "error")
     return render_template('admin.html')
 
-    # Profile Lookup Mode with Filters and Pagination
-@app.route('/users', methods=['GET', 'POST'])
+# Profile Lookup Mode with Filters and Pagination
+@app.route('/home', methods=['GET', 'POST'])
 @login_required
-def users():
+def home():
     user_name = session['user']
     options = {
         'limit': 5,
         'offset': 0,
-        'query_user': user_name,
+        'query_user': "",
         'query_text': "",
         'query_category': "",
         'offset_rank': 0,
@@ -205,8 +169,44 @@ def users():
         if key in request.args:
             options[key] = request.args.get(key, type=type(options[key]))
 
-    similar_users_rank = session.get('similar_users_rank')
-    profile = session.get('profile')
+    relevant_users_rank = session.get('relevant_users_rank')
+    relevant_bubbles = None
+
+    # Fetch user profile bubbles based on user_name, query text, category filter, offset, and fixed limit
+    kwargs = {
+        'query_user': options['query_user'],
+        'query_text': options['query_text'],
+        'query_category': options['query_category'],
+        'limit': options['limit'],
+        'offset': options['offset'],
+    }
+    try:
+        relevant_bubbles = handler.query_most_relevant_bubbles(**kwargs)
+        session['relevant_bubbles'] = relevant_bubbles # Cache the result in session
+    except ValueError as e:
+        flash_message(str(e), "error")
+        return redirect(url_for('home', **options))
+
+    # Determine if there are more bubbles for the "Next" page
+    next_offset = options['offset'] + options['limit']
+    if options['query_user']:
+        kwargs = {
+            'query_user': options['query_user'],
+            'query_text': options['query_text'],
+            'query_category': options['query_category'],
+            'limit': 1,
+            'offset': next_offset,
+        }
+        has_more = handler.query_most_relevant_bubbles(**kwargs)
+        options['has_more'] = len(has_more) > 0 if has_more is not None else False
+
+    similar_users_rank_shown = None
+    if isinstance(relevant_users_rank, list):
+        similar_users_rank_shown = relevant_users_rank[options['offset_rank']:options['offset_rank'] + options['limit']]
+
+    next_offset_rank = options['offset_rank'] + options['limit']
+    if relevant_users_rank:
+        options['has_more_rank'] = next_offset_rank < len(relevant_users_rank)
 
     # Handle search submission
     if request.method == 'POST':
@@ -215,6 +215,22 @@ def users():
             options['query_user'] = request.form.get('query_user', options["query_user"]).strip()
             options['query_text'] = request.form.get('query_text', options['query_text']).strip()
             options['query_category'] = request.form.get('query_category', options['query_category']).strip()
+
+        elif 'rank_users' in request.form:
+            options['query_text_rank'] = request.form['query_text_rank'].strip()
+            options['query_category_rank'] = request.form['query_category_rank'].strip()
+            # Run the async function
+            try:
+                relevant_users_rank = asyncio.run(handler.search_users_by_profile(options['query_text_rank'], options['query_category_rank'], options['limit_bubbles_rank'], options['limit_bubble_user_rank']))
+                session['relevant_users_rank'] = relevant_users_rank  # Cache the result in session
+            except ValueError as e:
+                flash_message(str(e), "error")
+                return None
+
+            # If the result is None, it means the current user has no bubbles yet.
+            if relevant_users_rank is None:
+                flash_message("You have no bubbles yet to summarize! Create some bubbles first.", "info")
+            return redirect(url_for('home', **options))
 
         elif 'create_bubble' in request.form:
             # Handle bubble creation (only for current user)
@@ -231,7 +247,7 @@ def users():
                     flash_message(str(e), "error")
                 except DatabaseError:
                     flash_message("Uh-oh! Something went wrong while creating the bubble. 🌬️", "error")
-            return redirect(url_for('users', **options))
+            return redirect(url_for('home', **options))
         
         elif 'remove_bubble' in request.form:
             # Handle bubble removal (only for current user)
@@ -241,64 +257,22 @@ def users():
                 flash_message("✨ Bubble has been successfully popped! 🎉", "success")
             except (BubbleNotFoundError, InvalidUserError, DatabaseError) as e:
                 flash_message(str(e), "error")
-            return redirect(url_for('users', **options))
-
-        elif 'rank_users' in request.form:
-            options['query_text_rank'] = request.form['query_text_rank'].strip()
-            options['query_category_rank'] = request.form['query_category_rank'].strip()
-            # Run the async function
-            try:
-                similar_users_rank = asyncio.run(handler.search_users_by_profile(options['query_text_rank'], options['query_category_rank'], options['limit_bubbles_rank'], options['limit_bubble_user_rank']))
-                session['similar_users_rank'] = similar_users_rank  # Cache the result in session
-            except ValueError as e:
-                flash_message(str(e), "error")
-                return None
-
-            # If the result is None, it means the current user has no bubbles yet.
-            if similar_users_rank is None:
-                flash_message("You have no bubbles yet to summarize! Create some bubbles first.", "info")
-            return redirect(url_for('users', **options))
-
-    # Fetch user profile bubbles based on user_name, query text, category filter, offset, and fixed limit
-    if options['query_user']:
-        try:
-            profile = handler.query_user_profile(options['query_user'], options['query_text'], options['query_category'], options['limit'], options['offset'])
-            profile['bubbles'] = bubble_add_time(profile.get('bubbles'))
-            session['profile'] = profile  # Cache the result in session
-        except ValueError as e:
-            flash_message(str(e), "error")
-            return redirect(url_for('users', **options))
-
-    # Determine if there are more bubbles for the "Next" page
-    next_offset = options['offset'] + options['limit']
-    if options['query_user']:
-        has_more = handler.query_user_profile(options['query_user'], options['query_text'], options['query_category'], 1, next_offset)
-        options['has_more'] = has_more.get('total_bubbles', 0) > 0 if has_more is not None else False
-
-    similar_users_rank_shown = None
-    if isinstance(similar_users_rank, list):
-        similar_users_rank_shown = similar_users_rank[options['offset_rank']:options['offset_rank'] + options['limit']]
-
-    next_offset_rank = options['offset_rank'] + options['limit']
-    if similar_users_rank:
-        options['has_more_rank'] = next_offset_rank < len(similar_users_rank)
-
-    print(user_name, options)
-
+            return redirect(url_for('home', **options))
+        
     return render_template(
-        'users.html',
+        'home.html',
         **options,
-        profile=profile,
+        relevant_bubbles=relevant_bubbles,
         user_name=user_name,
-        similar_users_rank=similar_users_rank_shown,
+        relevant_users_rank=similar_users_rank_shown,
     )
 
 # Logout
 @app.route('/logout')
 def logout():
     session.pop('user', None)
-    session.pop('profile', None)
-    session.pop('similar_users_rank', None)
+    session.pop('relevant_bubbles', None)
+    session.pop('relevant_users_rank', None)
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
