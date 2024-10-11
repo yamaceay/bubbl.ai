@@ -129,54 +129,6 @@ def menu():
 def about():
     return render_template('about.html')
 
-# Creative Mode
-@app.route('/me', methods=['GET', 'POST'])
-@login_required
-def me():
-    limit = 5  # Fixed limit of 5 bubbles per page
-    offset = request.args.get('offset', 0, type=int)
-    user_name = session['user']  # Get the logged-in user's name
-
-    # Fetch the user's bubbles for display
-    try:
-        profile = handler.query_user_profile(user_name, "", "", limit, offset)
-        profile['bubbles'] = bubble_add_time(profile.get('bubbles'))
-    except BubbleError as e:
-        flash_message(str(e), "error")
-        return redirect(url_for('menu'))
-
-    # Handle bubble removal
-    if request.method == 'POST' and 'remove_bubble' in request.form:
-        bubble_id = request.form['bubble_id']
-        try:
-            success = handler.remove_bubble(bubble_id)
-            flash_message("✨ Bubble has been successfully popped! 🎉", "success")
-        except (BubbleNotFoundError, InvalidUserError, DatabaseError) as e:
-            flash_message(str(e), "error")
-        return redirect(url_for('me'))
-
-    # Handle bubble creation (writing new bubbles)
-    if request.method == 'POST' and 'create_bubble' in request.form:
-        content = request.form['content'].strip()
-        category = request.form.get('category', '').strip()  # Category is optional
-        if not content:
-            flash_message("Content cannot be empty! 🧐", "error")
-        else:
-            try:
-                bubble = [{"content": content, "user": user_name, "category": category}]
-                result = handler.insert_bubbles(bubble)
-                flash_message("✨ Your bubble has been blown! 🎉", "success")
-            except DuplicateBubbleError as e:
-                flash_message(str(e), "error")
-            except DatabaseError as e:
-                flash_message("Uh-oh! Something went wrong while creating the bubble. 🌬️", "error")
-        return redirect(url_for('me'))
-
-    # Render the creative self page with bubbles and pagination
-    next_offset = offset + limit
-    has_more = handler.query_user_profile(user_name, "", "", 1, next_offset)
-    return render_template('me.html', profile=profile, offset=offset, limit=limit, has_more=has_more)
-
 # Explore Bubbles
 @app.route('/feed', methods=['GET', 'POST'])
 @login_required

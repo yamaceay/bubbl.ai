@@ -1,20 +1,12 @@
 {% extends "base.html" %}
 
 {% block header %}
-    {% if is_current_user %}
-        🎨 My Bubbles
-    {% else %}
-        👤 Search Users
-    {% endif %}
+    👤 Search Users
 {% endblock %}
 
 {% block content %}
     <!-- Display header message based on current user -->
-    {% if is_current_user %}
-        <p>Blow your own bubbles and let your creativity flow!</p>
-    {% else %}
-        <p>Search for user profiles by username.</p>
-    {% endif %}
+    <p>Search for user profiles by username.</p>
 
     <!-- Search Form -->
     <form method="POST">
