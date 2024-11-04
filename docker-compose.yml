@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  web:
+    image: yamaceay/bubblai:latest
+    build: .
+    ports:
+      - "${PORT:-5001}:5000"
+    healthcheck:
+      test: curl --fail https://0.0.0.0:5001 || exit 1
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    environment:
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - WCS_URL=${WCS_URL}
+      - WCS_API_KEY=${WCS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+    volumes:
+      - .:/app
+    env_file:
+      - .env

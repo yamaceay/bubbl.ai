@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block header %}
+    🌟 Bubbl.ai
+{% endblock %}
+
+{% block content %}
+<!-- Display header message based on current user -->
+<!-- Container for form and bubbles -->
+    <!-- Create New Bubble Form -->
+    <div id="newBubbleForm" class="form-container" style="display: flex; flex-direction: column;">
+        <div class="form">
+            <form method="POST" action="{{ url_for('home') }}" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <textarea name="content" placeholder="What's on your mind?" class="input-field" style="height: 100px;"></textarea>
+                </div>
+                <div style="display: flex; flex-direction: row; gap: 10px; align-items: center;">
+                    <label for="category" style="align-self: center;">🏷️ Category</label>
+                    <input type="text" name="category" placeholder="e.g. Technology, Life" class="input-field" style="width: auto; flex-grow: 1;">
+                    <button type="submit" name="create_bubble" style="align-self: center; width: auto;">Blow</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Switch Button -->
+    <button id="switchButton" onclick="toggleView()">Show Bubblers 👤</button>
+
+    <!-- Container for Search Forms and Results -->
+    <div id="bubblesView" style="display: block;">
+        <!-- Search Bubbles Section -->
+        <div style="flex: 1;">
+            <!-- Search Form and Results -->
+            <h3 style="text-align: center;">Bubbles 🎈</h3>
+            <div id="searchForm" class="form-container" style="display: flex; flex-direction: column;">
+                <div class="form">
+                    <!-- Search Form -->
+                    <form method="POST" action="{{ url_for('home') }}" style="display: flex; flex-direction: column; gap: 10px;">
+                        <input type="hidden" name="search_bubbles" value="true">
+                        <button type="button" class="filter-button" onclick="toggleVisibility('searchFormElements')">🧩 Filters</button>
+                        <div id="searchFormElements" style="display: none;">
+                            <label for="query_text">💭 Query</label>
+                            <input type="text" name="query_text" value="{{ query_text }}" placeholder="Sort results by query" class="input-field">
+                            
+                            <label for="query_category">🏷️ Category</label>
+                            <input type="text" name="query_category" value="{{ query_category }}" placeholder="Filter by category" class="input-field">
+                            
+                            <label for="query_user">👤 User</label>
+                            <input type="text" name="query_user" value="{{ query_user }}" placeholder="Filter by user" class="input-field">
+                        </div>
+                        <button type="submit" class="submit-button">🔍 Search</button>
+                    </form>
+                                 
+                    {% if relevant_bubbles %}
+                    <!-- Pagination Controls -->
+                    <div class="pagination">
+                        {% if offset > 0 %}
+                        <a href="{{ url_for('home', offset=offset - limit_bubbles) }}">⬅️ Previous</a>
+                        {% endif %}
+                        {% if has_more %}
+                        <a href="{{ url_for('home', offset=offset + limit_bubbles) }}">Next ➡️</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Display User Profile Bubbles -->
+                    {% if relevant_bubbles %}
+                    <ul class="bubble-list">
+                        {% for bubble in relevant_bubbles %}
+                        <li class="bubble-item">💭 <b>{{ bubble.content }}</b> <br> 
+                            <small>
+                                {% if bubble.user == user_name %}
+                                <a href="{{ url_for('home', query_user=bubble.user, query_category='', query_text='') }}" class="tag" onclick="switchToBubblesView()">👤 @you</a>
+                                {% else %}
+                                <a href="{{ url_for('home', query_user=bubble.user, query_category='', query_text='') }}" class="tag" onclick="switchToBubblesView()">👤 @{{ bubble.user }}</a>
+                                {% endif %}
+                                {% if bubble.created_at_str %}
+                                <span class="tag">🕒 {{ bubble.created_at_str }}</span>
+                                {% endif %}
+                                {% if bubble.category %}
+                                <a href="{{ url_for('home', query_user='', query_category=bubble.category, query_text='') }}" class="tag" onclick="switchToBubblesView()">🏷️ #{{ bubble.category }}</a>
+                                {% endif %}
+                                {% if bubble.user == user_name %}
+                                <span class="tag delete-bubble" onclick="document.getElementById('delete-form-{{ bubble.uuid }}').submit();">
+                                    🎈 Pop
+                                </span>
+                                <form method="POST" id="delete-form-{{ bubble.uuid }}" style="display: none;">
+                                    <input type="hidden" name="bubble_id" value="{{ bubble.uuid }}">
+                                    <input type="hidden" name="remove_bubble" value="true">
+                                    <button type="submit" class="delete-bubble"></button>
+                                </form>
+                                {% endif %}
+                            </small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Bubblers Section -->
+    <div id="bubblersView" style="display: none;">
+        <h3 style="text-align: center;">Bubblers 👤</h3>
+        <div id="rankForm" class="form-container" style="display: flex; flex-direction: column;">
+            <div class="form">
+                <!-- Search Form -->
+                <form method="POST" action="{{ url_for('home') }}" style="display: flex; flex-direction: column; gap: 10px;">
+                    <button type="button" class="filter-button" onclick="toggleVisibility('rankFormElements')">🧩 Filters</button>
+                    <input type="hidden" name="rank_users" value="true">
+                    <div id="rankFormElements" style="display: none;">
+                        <label for="query_text_rank">💭 Query</label>
+                        <input type="text" name="query_text_rank" value="{{ query_text_rank }}" placeholder="Sort results by query" class="input-field">
+                        
+                        <label for="query_category_rank">🏷️ Category</label>
+                        <input type="text" name="query_category_rank" value="{{ query_category_rank }}" placeholder="Filter by category" class="input-field">
+                    </div>
+                    <button type="submit" class="submit-button">🔍 Search</button>
+                </form>
+
+                <!-- Pagination Controls -->
+                {% if relevant_users_rank %}
+                <div class="pagination">
+                    {% if offset_rank > 0 %}
+                    <a href="{{ url_for('home', offset_rank=offset_rank - limit_users) }}">⬅️ Previous</a>
+                    {% endif %}
+                    {% if has_more_rank %}
+                    <a href="{{ url_for('home', offset_rank=offset_rank + limit_users) }}">Next ➡️</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Display Results -->
+                {% if relevant_users_rank %}
+                <ul class="similar-users-list">
+                    {% for user in relevant_users_rank %}
+                    <li>
+                        <a href="{{ url_for('home', query_user=user.user, query_category='', query_text='') }}" onclick="switchToBubblesView()">
+                            👤 <b>{{ user.user }}</b> <br>
+                            <small>
+                                <span class="tag">Similarity: {{ '%.2f' % (user.similarity * 100) }}%</span>
+                            </small>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <script>
+        function toggleVisibility(elementId) {
+            var element = document.getElementById(elementId);
+            if (element.style.display === "none") {
+                element.style.display = "block";
+            } else {
+                element.style.display = "none";
+            }
+        }
+        
+        function toggleView() {
+            var bubblesView = document.getElementById('bubblesView');
+            var bubblersView = document.getElementById('bubblersView');
+            var switchButton = document.getElementById('switchButton');
+        
+            if (bubblesView.style.display === "none" || bubblesView.style.display === "") {
+                bubblesView.style.display = "block";
+                bubblersView.style.display = "none";
+                switchButton.textContent = "Show Bubblers 👤";
+                localStorage.setItem('viewPreference', 'bubbles');
+            } else {
+                bubblesView.style.display = "none";
+                bubblersView.style.display = "block";
+                switchButton.textContent = "Show Bubbles 🎈";
+                localStorage.setItem('viewPreference', 'bubblers');
+            }
+        }
+        
+        function switchToBubblesView() {
+            document.getElementById('bubblesView').style.display = "block";
+            document.getElementById('bubblersView').style.display = "none";
+            document.getElementById('switchButton').textContent = "Show Bubblers 👤";
+            localStorage.setItem('viewPreference', 'bubbles');
+        }
+        
+        // Restore the user's view preference on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            var viewPreference = localStorage.getItem('viewPreference');
+            if (viewPreference === 'bubblers') {
+                document.getElementById('bubblesView').style.display = "none";
+                document.getElementById('bubblersView').style.display = "block";
+                document.getElementById('switchButton').textContent = "Show Bubbles 🎈";
+            } else {
+                document.getElementById('bubblesView').style.display = "block";
+                document.getElementById('bubblersView').style.display = "none";
+                document.getElementById('switchButton').textContent = "Show Bubblers 👤";
+            }
+        });
+    </script>
+{% endblock %}

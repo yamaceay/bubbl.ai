@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block header %}👨‍💻 Admin{% endblock %}
+
+{% block content %}
+
+<!-- Form to Insert Bubbles from JSON File -->
+<h3>Blow Bubbles from a JSON File</h3>
+<form method="POST">
+    <label for="json_file">Enter the path to your bubbly JSON file:</label>
+    <input type="text" name="json_file" placeholder="Path to JSON file" required><br>
+    <button type="submit" name="insert_bubbles">Insert Bubbles from JSON</button>
+</form>
+
+<!-- Form to Pop All Bubbles -->
+<h3>Pop All Bubbles (Warning: This will delete everything!)</h3>
+<form method="POST">
+    <button type="submit" name="pop_all">🚨 Pop ALL the Bubbles</button>
+</form>
+
+{% endblock %}

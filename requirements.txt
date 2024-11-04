@@ -1,7 +1,8 @@
-fastapi 
-uvicorn 
-weaviate-client 
-requests 
-transformers 
-psycopg2-binary 
-scikit-learn
+Flask
+numpy
+bcrypt
+openai
+weaviate_client
+python-dotenv
+humanize
+asyncio

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bubbl.ai{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><img src="{{ url_for('static', filename='images/bubble.png') }}" alt="Bubble Thumbnail" class="thumbnail" width="100" height="100"></li>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('about') }}">About</a></li> <!-- Link to the About page -->
+            <li><a href="{{ url_for('logout') }}">Log out</a></li>
+            <li><p>&copy; 2024 Bubbl.ai</p></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <header>
+            <h1>{% block header %}Welcome to Bubbl.ai{% endblock %}</h1>
+        </header>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul>
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
